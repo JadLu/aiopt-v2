@@ -522,6 +522,23 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
   const isFailed  = !creative.taskId && creative.status === "failed" && !creative.imageUrl;
   const hasImage  = !!creative.imageUrl && !imgError;
 
+  async function handleDownload() {
+    if (!creative.imageUrl) return;
+    setMenuOpen(false);
+    try {
+      const res  = await fetch(creative.imageUrl);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `creative-${creative.id}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(creative.imageUrl, "_blank");
+    }
+  }
+
   async function handleDelete() {
     setMenuOpen(false);
     setDeleting(true);
@@ -571,13 +588,12 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
                 <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
                 <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden", minWidth: 130, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
                   {hasImage && (
-                    <a
-                      href={creative.imageUrl} download target="_blank" rel="noopener noreferrer"
-                      onClick={() => setMenuOpen(false)}
-                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", fontSize: 13, color: "var(--text-primary)", textDecoration: "none", fontFamily: "inherit" }}
+                    <button
+                      onClick={handleDownload}
+                      style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--text-primary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
                     >
                       <Download size={13} color="var(--text-secondary)" /> Save
-                    </a>
+                    </button>
                   )}
                   <button
                     onClick={handleDelete}
@@ -607,12 +623,12 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={creative.imageUrl} alt={creative.prompt} style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, objectFit: "contain", boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }} />
             <div style={{ display: "flex", gap: 10 }}>
-              <a
-                href={creative.imageUrl} download target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--accent-primary)", color: "#fff", textDecoration: "none", fontFamily: "inherit" }}
+              <button
+                onClick={handleDownload}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--accent-primary)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit" }}
               >
                 <Download size={13} /> Download
-              </a>
+              </button>
               <button
                 onClick={() => setLightbox(false)}
                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer", fontFamily: "inherit" }}

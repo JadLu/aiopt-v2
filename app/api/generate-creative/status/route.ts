@@ -2,21 +2,6 @@ import { type NextRequest } from "next/server";
 
 const KIE_AI_BASE = "https://api.kie.ai";
 
-function findUrl(node: unknown): string | null {
-  if (typeof node === "string" && node.startsWith("http")) return node;
-  if (Array.isArray(node)) {
-    for (const item of node) { const u = findUrl(item); if (u) return u; }
-  }
-  if (node && typeof node === "object") {
-    const obj = node as Record<string, unknown>;
-    for (const key of ["imageUrl", "image_url", "url", "cover", "resource", "result", "output", "downloadUrl", "works", "images", "urls", "outputs", "results"]) {
-      const u = findUrl(obj[key]); if (u) return u;
-    }
-    for (const v of Object.values(obj)) { const u = findUrl(v); if (u) return u; }
-  }
-  return null;
-}
-
 export async function GET(request: NextRequest) {
   const taskId = request.nextUrl.searchParams.get("taskId");
   if (!taskId) return new Response("taskId is required", { status: 400 });
@@ -24,80 +9,44 @@ export async function GET(request: NextRequest) {
   const apiKey = process.env.KIE_AI_API_KEY;
   if (!apiKey) return new Response("KIE_AI_API_KEY is not configured", { status: 500 });
 
-  // Try POST /queryTask first (consistent with createTask naming convention),
-  // then fall back to GET with taskId as query param.
-  const attempts: Array<{ label: string; fn: () => Promise<Response> }> = [
-    {
-      label: "POST /queryTask",
-      fn: () => fetch(`${KIE_AI_BASE}/api/v1/jobs/queryTask`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId }),
-      }),
-    },
-    {
-      label: "GET /queryTask",
-      fn: () => fetch(`${KIE_AI_BASE}/api/v1/jobs/queryTask?taskId=${encodeURIComponent(taskId)}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      }),
-    },
-  ];
-
-  let lastRaw: unknown = null;
-
-  for (const { label, fn } of attempts) {
-    let upstream: Response;
-    try {
-      upstream = await fn();
-    } catch (err) {
-      console.error(`[status] ${label} network error:`, err);
-      continue;
-    }
-
-    let raw: unknown;
-    try {
-      raw = await upstream.json();
-    } catch {
-      console.warn(`[status] ${label} HTTP ${upstream.status} — non-JSON body`);
-      continue;
-    }
-
-    console.log(`[status] ${label} HTTP ${upstream.status} response:`, JSON.stringify(raw));
-    lastRaw = raw;
-
-    if (!upstream.ok) continue; // e.g. 404 / 401 — try next variant
-
-    const data = raw as Record<string, unknown>;
-
-    // kie.ai wraps payload under data.data
-    const payload = (data.data && typeof data.data === "object")
-      ? data.data as Record<string, unknown>
-      : data;
-
-    const rawStatus = String(payload.status ?? payload.state ?? "").toLowerCase();
-    const isFailed  = rawStatus === "failed" || rawStatus === "error";
-    const isDone    = rawStatus === "succeeded" || rawStatus === "success" || rawStatus === "done" || rawStatus === "completed" || rawStatus === "finished";
-
-    if (isFailed) return Response.json({ status: "failed" });
-
-    if (isDone) {
-      const imageUrl =
-        findUrl(payload.works)   ??
-        findUrl(payload.output)  ??
-        findUrl(payload.result)  ??
-        findUrl(payload.outputs) ??
-        findUrl(payload.results) ??
-        findUrl(payload);
-      if (imageUrl) return Response.json({ status: "success", imageUrl });
-      // Marked done but URL not yet in payload — keep polling
-      return Response.json({ status: "pending" });
-    }
-
-    // Still running
+  let upstream: Response;
+  try {
+    upstream = await fetch(
+      `${KIE_AI_BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+  } catch (err) {
+    console.error(`[status] network error for taskId=${taskId}:`, err);
     return Response.json({ status: "pending" });
   }
 
-  // All attempts failed or returned non-OK — log the last response for debugging
-  console.warn(`[status] all endpoint attempts failed for taskId=${taskId}. Last raw:`, JSON.stringify(lastRaw));
+  const data = await upstream.json() as { code: number; msg: string; data?: Record<string, unknown> };
+  console.log(`[status] recordInfo HTTP ${upstream.status} for taskId=${taskId}:`, JSON.stringify(data));
+
+  const payload = data.data;
+  if (!payload) return Response.json({ status: "pending" });
+
+  const state = String(payload.state ?? "").toLowerCase();
+
+  if (state === "fail") {
+    return Response.json({ status: "failed" });
+  }
+
+  if (state === "success") {
+    // resultJson is a stringified JSON: '{"resultUrls":["https://..."]}'
+    let imageUrl: string | null = null;
+    try {
+      const parsed = JSON.parse(String(payload.resultJson ?? "{}")) as { resultUrls?: string[] };
+      imageUrl = parsed.resultUrls?.[0] ?? null;
+    } catch {
+      console.warn(`[status] could not parse resultJson for taskId=${taskId}:`, payload.resultJson);
+    }
+
+    if (imageUrl) return Response.json({ status: "success", imageUrl });
+    // Succeeded but URL not yet populated — keep polling
+    return Response.json({ status: "pending" });
+  }
+
+  // waiting / queuing / generating — still in progress
   return Response.json({ status: "pending" });
 }

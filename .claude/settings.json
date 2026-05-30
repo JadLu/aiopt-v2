@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"c:\\\\Users\\\\arrad\\\\OneDrive\\\\Bureau\\\\AIOPT - v2\"; $env:CI = \"true\"; pnpm build 2>&1 | Select-Object -Last 30)",
+      "Bash(pnpm build *)",
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\arrad\\\\OneDrive\\\\Bureau\\\\AIOPT - v2\\\\app\\\\\\(app\\)\\\\creative\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"done\")"
+    ]
+  }
+}

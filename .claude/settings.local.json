@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command pnpm -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command npm,pnpm,yarn,node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command corepack -ErrorAction SilentlyContinue)",
+      "PowerShell(corepack pnpm dev)",
+      "PowerShell($env:CI = \"true\"; corepack pnpm dev)",
+      "PowerShell(Test-Path node_modules; Test-Path node_modules/.bin/next.cmd; Test-Path node_modules/next; if \\(Test-Path node_modules\\) { \\(Get-ChildItem node_modules -Directory | Measure-Object\\).Count })",
+      "PowerShell($env:CI = \"true\"; corepack pnpm install --fetch-timeout=600000 --fetch-retries=10 --fetch-retry-maxtimeout=120000 --ignore-scripts)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri http://localhost:3000/login -UseBasicParsing -TimeoutSec 30; \"$\\($r.StatusCode\\) $\\($r.StatusDescription\\) | $\\($r.Content.Length\\) bytes\" } catch { \"ERR: $\\($_.Exception.Message\\)\" })",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\arrad\\\\OneDrive\\\\Bureau\\\\AIOPT - v2\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\arrad\\\\OneDrive\\\\Bureau\\\\AIOPT - v2\" -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(pnpm add *)"
+    ]
+  }
+}

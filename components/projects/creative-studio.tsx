@@ -522,21 +522,13 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
   const isFailed  = !creative.taskId && creative.status === "failed" && !creative.imageUrl;
   const hasImage  = !!creative.imageUrl && !imgError;
 
-  async function handleDownload() {
+  function handleDownload() {
     if (!creative.imageUrl) return;
     setMenuOpen(false);
-    try {
-      const res  = await fetch(creative.imageUrl);
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `creative-${creative.id}.jpg`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      window.open(creative.imageUrl, "_blank");
-    }
+    const a    = document.createElement("a");
+    a.href     = `/api/download?url=${encodeURIComponent(creative.imageUrl)}`;
+    a.download = `creative-${creative.id}.jpg`;
+    a.click();
   }
 
   async function handleDelete() {

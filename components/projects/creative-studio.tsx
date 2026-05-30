@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Sparkles, Download, RotateCcw, AlertCircle, RefreshCw, MapPin,
+  Sparkles, Download, RefreshCw, MapPin, AlertCircle,
 } from "lucide-react";
 import {
   createAiCreative, updateAiCreativeImageUrl, failAiCreative,
@@ -244,17 +244,17 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiCreatives]);
 
-  // ── 5. Gen-completion detector: update the result card when Firestore confirms ─
+  // ── 5. Reset to idle when Firestore confirms completion ─────────────────────
   useEffect(() => {
     const docId = pendingDocRef.current;
     if (!docId) return;
     const creative = aiCreatives.find(c => c.id === docId);
     if (!creative) return;
     if (creative.imageUrl) {
-      setGen(g => ({ ...g, status: "done", imageUrl: creative.imageUrl }));
+      setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution }));
       pendingDocRef.current = null;
     } else if (creative.status === "failed") {
-      setGen(g => ({ ...g, status: "error", error: `Generation failed. Task ID: ${creative.taskId ?? "unknown"}` }));
+      setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: "Generation failed. Please try again." }));
       pendingDocRef.current = null;
     }
   }, [aiCreatives]);
@@ -277,7 +277,7 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
       });
       const data = await res.json() as { taskId?: string; error?: string };
       if (!res.ok || !data.taskId) {
-        setGen(g => ({ ...g, status: "error", error: data.error ?? "Failed to start generation." }));
+        setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: data.error ?? "Failed to start generation." }));
         return;
       }
 
@@ -294,7 +294,7 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
       pendingDocRef.current = docId;
       setGen(g => ({ ...g, status: "polling", taskId: data.taskId! }));
     } catch {
-      setGen(g => ({ ...g, status: "error", error: "Network error. Please try again." }));
+      setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: "Network error. Please try again." }));
     }
   }
 
@@ -473,64 +473,14 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
             {gen.status === "submitting" ? "Starting…" : gen.status === "polling" ? "Generating…" : "Generate Creative"}
           </button>
         </div>
+
+        {gen.error && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, padding: "8px 12px", background: "rgba(229,118,118,0.08)", borderRadius: 8, border: "1px solid rgba(229,118,118,0.20)" }}>
+            <AlertCircle size={13} color="var(--danger)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: "var(--danger)" }}>{gen.error}</span>
+          </div>
+        )}
       </div>
-
-      {/* Result card — shown on completion or error */}
-      {(gen.status === "done" || gen.status === "error") && (
-        <div className="card" style={{ padding: "24px 28px" }}>
-
-          {gen.status === "done" && gen.imageUrl && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={gen.imageUrl}
-                alt="Generated creative"
-                style={{ maxWidth: "100%", maxHeight: 600, borderRadius: 10, objectFit: "contain" }}
-              />
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <button
-                  className="btn-secondary"
-                  style={{ width: "auto", padding: "8px 16px", fontSize: 13 }}
-                  onClick={() => setGen(g => ({ ...g, status: "idle", imageUrl: null, taskId: null }))}
-                >
-                  <RotateCcw size={13} /> Try Again
-                </button>
-                <a
-                  href={gen.imageUrl} download target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                    border: "1px solid var(--border-default)", background: "var(--bg-elevated)",
-                    color: "var(--text-primary)", textDecoration: "none", fontFamily: "inherit",
-                  }}
-                >
-                  <Download size={13} /> Download
-                </a>
-                <span style={{ fontSize: 12, color: "var(--success)", display: "flex", alignItems: "center", gap: 5 }}>
-                  ✓ Saved to gallery
-                </span>
-              </div>
-            </div>
-          )}
-
-          {gen.status === "error" && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(229,118,118,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <AlertCircle size={20} color="var(--danger)" />
-              </div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Generation Failed</p>
-              <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>{gen.error}</p>
-              <button
-                className="btn-secondary"
-                style={{ width: "auto", padding: "8px 16px", fontSize: 13, marginTop: 4 }}
-                onClick={() => setGen(g => ({ ...g, status: "idle", error: null }))}
-              >
-                <RotateCcw size={13} /> Try Again
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Gallery — all creatives from Firestore for this project */}
       {aiCreatives.length > 0 && (

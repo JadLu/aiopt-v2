@@ -475,33 +475,9 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
         </div>
       </div>
 
-      {/* Result card — shown while generating or after completion */}
-      {gen.status !== "idle" && (
+      {/* Result card — shown on completion or error */}
+      {(gen.status === "done" || gen.status === "error") && (
         <div className="card" style={{ padding: "24px 28px" }}>
-
-          {isGenerating && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "32px 0" }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: "50%",
-                border: "3px solid var(--border-default)",
-                borderTopColor: "var(--accent-primary)",
-                animation: "spin 1s linear infinite",
-              }} />
-              <div style={{ textAlign: "center" }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 4px" }}>
-                  {gen.status === "submitting" ? "Submitting task…" : "Generating your creative…"}
-                </p>
-                <p style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "0 0 8px" }}>
-                  {gen.status === "polling" && "This usually takes 20–60 seconds"}
-                </p>
-                {gen.taskId && (
-                  <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0, fontFamily: "monospace", background: "var(--bg-subtle)", padding: "4px 10px", borderRadius: 6 }}>
-                    Task ID: {gen.taskId}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
 
           {gen.status === "done" && gen.imageUrl && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, FolderKanban, ImagePlay,
+  LayoutDashboard, FolderKanban,
   Megaphone, Bot, Settings, ChevronLeft, ChevronRight, Layers
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
@@ -12,7 +12,6 @@ import { ThemeToggle } from "./theme-toggle";
 const NAV = [
   { label: "Dashboard",   href: "/dashboard",   icon: LayoutDashboard },
   { label: "Projects",    href: "/projects",     icon: FolderKanban },
-  { label: "Creative",    href: "/creative",     icon: ImagePlay },
   { label: "Advertising", href: "/advertising",  icon: Megaphone },
   { label: "AI Assistant",href: "/ai-assistant", icon: Bot },
 ];

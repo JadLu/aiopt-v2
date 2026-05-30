@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Sparkles, Download, RefreshCw, MapPin, AlertCircle, MoreVertical, Trash2, X,
+  Sparkles, Download, RefreshCw, MapPin, AlertCircle, MoreVertical, Trash2, X, Eye, EyeOff,
 } from "lucide-react";
 import {
   createAiCreative, updateAiCreativeImageUrl, failAiCreative,
@@ -14,6 +14,7 @@ import type { Project } from "@/lib/mock-data";
 
 function stripMd(text: string): string {
   return text
+    .replace(/```[\s\S]*?```/g, "")       // remove fenced code blocks (incl. json:* blocks)
     .replace(/^#{1,6}\s+.+$/gm, "")
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/\*(.+?)\*/g, "$1")
@@ -69,6 +70,60 @@ export function buildAutoPrompt(project: Project): string {
   if (project.description) lines.push(`Product: ${project.description}`);
   if (audience)            lines.push(`Target audience: ${audience}`);
   if (angle)               lines.push(`Creative & visual direction: ${angle}`);
+  lines.push(
+    `Produce a premium-quality, culturally relevant ad image optimised for digital performance marketing in ${project.country}. Professional lighting, clean composition, brand-safe.`
+  );
+  return lines.join("\n\n");
+}
+
+// ─── Criteria-driven prompt builder ──────────────────────────────────────────
+
+interface CriteriaState {
+  segmentIdx: number | null;
+  channelIdx: number | null;
+  pillarIdx:  number | null;
+  hookIdx:    number | null;
+}
+
+function defaultCriteria(project: Project): CriteriaState {
+  const vd = project.planVisualData;
+  const chs = vd?.channels?.channels ?? [];
+  const primaryIdx = chs.findIndex(c => c.primary);
+  return {
+    segmentIdx: vd?.market?.segments?.length  ? 0 : null,
+    channelIdx: chs.length ? (primaryIdx >= 0 ? primaryIdx : 0) : null,
+    pillarIdx:  vd?.content?.pillars?.length  ? 0 : null,
+    hookIdx:    vd?.content?.hooks?.length    ? 0 : null,
+  };
+}
+
+function buildPromptFromCriteria(project: Project, criteria: CriteriaState): string {
+  const vd = project.planVisualData;
+  const lines: string[] = [
+    `High-converting e-commerce ad creative for "${project.name}" — ${project.country} market.`,
+  ];
+  if (project.description) lines.push(`Product: ${project.description}`);
+
+  const seg = criteria.segmentIdx !== null ? vd?.market?.segments?.[criteria.segmentIdx] : null;
+  if (seg) lines.push(`Target Audience: ${seg.name} (${seg.size}) — ${seg.traits.join(", ")}`);
+
+  const ch = criteria.channelIdx !== null ? vd?.channels?.channels?.[criteria.channelIdx] : null;
+  if (ch) {
+    const fmts = ch.formats.slice(0, 2).join(", ");
+    lines.push(`Platform: ${ch.name}${fmts ? ` — ${fmts} format` : ""}`);
+  }
+
+  const pillar = criteria.pillarIdx !== null ? vd?.content?.pillars?.[criteria.pillarIdx] : null;
+  const tone   = vd?.content?.tone ?? "";
+  if (pillar) {
+    lines.push(`Creative Direction: ${pillar.name} — ${pillar.description}${tone ? `. Tone: ${tone}` : ""}`);
+  } else if (tone) {
+    lines.push(`Creative tone: ${tone}`);
+  }
+
+  const hook = criteria.hookIdx !== null ? vd?.content?.hooks?.[criteria.hookIdx] : null;
+  if (hook) lines.push(`Hook: "${hook}"`);
+
   lines.push(
     `Produce a premium-quality, culturally relevant ad image optimised for digital performance marketing in ${project.country}. Professional lighting, clean composition, brand-safe.`
   );
@@ -144,9 +199,25 @@ interface CreativeStudioProps {
 
 export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   const [aiCreatives, setAiCreatives] = useState<AiCreative[]>([]);
-  const [gen, setGen] = useState<GenState>(() => ({
-    ...INITIAL_GEN, prompt: buildAutoPrompt(project),
-  }));
+  const [criteria, setCriteria] = useState<CriteriaState>(() => defaultCriteria(project));
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [gen, setGen] = useState<GenState>(() => {
+    const crit = defaultCriteria(project);
+    return {
+      ...INITIAL_GEN,
+      prompt: project.planVisualData
+        ? buildPromptFromCriteria(project, crit)
+        : buildAutoPrompt(project),
+    };
+  });
+
+  function handleCriteriaChange(next: CriteriaState) {
+    setCriteria(next);
+    setGen(prev => ({
+      ...prev,
+      prompt: buildPromptFromCriteria(project, next),
+    }));
+  }
 
   // docId of the creative being generated right now — used to detect completion
   const pendingDocRef  = useRef<string | null>(null);
@@ -161,9 +232,13 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
 
   // ── 2. Rebuild prompt when project or plan changes ───────────────────────────
   useEffect(() => {
+    const fresh = defaultCriteria(project);
+    setCriteria(fresh);
     setGen(prev => ({
       ...INITIAL_GEN,
-      prompt:      buildAutoPrompt(project),
+      prompt: project.planVisualData
+        ? buildPromptFromCriteria(project, fresh)
+        : buildAutoPrompt(project),
       aspectRatio: prev.aspectRatio,
       resolution:  prev.resolution,
     }));
@@ -299,103 +374,277 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   }
 
   const isGenerating = gen.status === "submitting" || gen.status === "polling";
-  const brief        = extractBrief(project);
+
+  const vd        = project.planVisualData;
+  const segments  = vd?.market?.segments    ?? [];
+  const channels  = vd?.channels?.channels  ?? [];
+  const pillars   = vd?.content?.pillars    ?? [];
+  const hooks     = vd?.content?.hooks      ?? [];
+  const hasCriteria = segments.length > 0 || channels.length > 0 || pillars.length > 0 || hooks.length > 0;
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
 
-      {/* Creative brief context bar */}
-      <div className="card" style={{ padding: "16px 20px" }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 12, flexShrink: 0, overflow: "hidden",
-            background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center",
-            border: "1px solid var(--border-default)",
-          }}>
+      {/* Creative Brief — criteria picker or fallback */}
+      <div className="card" style={{ padding: "18px 22px" }}>
+
+        {/* Product header row */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: hasCriteria ? 20 : 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 11, flexShrink: 0, overflow: "hidden", background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-default)" }}>
             {project.productImageUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={project.productImageUrl} alt={project.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <span style={{ fontSize: 28 }}>{project.emoji}</span>
+              : <span style={{ fontSize: 22 }}>{project.emoji}</span>
             }
           </div>
-
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{project.name}</span>
               <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--accent-primary)", background: "rgba(90,200,214,0.10)", padding: "2px 8px", borderRadius: 20 }}>
                 <MapPin size={10} strokeWidth={2} /> {project.country}
               </span>
               {project.productImageUrl && (
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)", background: "var(--bg-subtle)", padding: "2px 8px", borderRadius: 20 }}>
-                  Product image used as reference
+                  Reference image active
                 </span>
               )}
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {[
-                { label: "Audience",       text: brief.audience },
-                { label: "Creative angle", text: brief.angle },
-              ].map(({ label, text }) => (
-                <div key={label}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>
-                    {label}
-                  </div>
-                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.55,
-                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                  }}>
-                    {text || <span style={{ color: "var(--text-tertiary)", fontStyle: "italic" }}>Not found in plan</span>}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {hasCriteria && (
+              <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: "4px 0 0" }}>
+                Select criteria below to craft the perfect prompt for your creative
+              </p>
+            )}
           </div>
         </div>
+
+        {hasCriteria ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Audience Segment */}
+            {segments.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Audience Segment
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {segments.map((seg, i) => {
+                    const active = criteria.segmentIdx === i;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleCriteriaChange({ ...criteria, segmentIdx: active ? null : i })}
+                        disabled={isGenerating}
+                        style={{
+                          padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "inherit", cursor: "pointer", transition: "all 0.13s",
+                          border: `1px solid ${active ? "var(--accent-primary)" : "var(--border-default)"}`,
+                          background: active ? "color-mix(in srgb, var(--accent-primary) 10%, transparent)" : "var(--bg-subtle)",
+                          color: active ? "var(--accent-primary)" : "var(--text-secondary)",
+                          fontWeight: active ? 600 : 400,
+                          opacity: isGenerating ? 0.5 : 1,
+                        }}
+                      >
+                        {seg.name}
+                        <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4 }}>{seg.size}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Platform */}
+            {channels.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Platform
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {channels.map((ch, i) => {
+                    const active = criteria.channelIdx === i;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleCriteriaChange({ ...criteria, channelIdx: active ? null : i })}
+                        disabled={isGenerating}
+                        style={{
+                          padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "inherit", cursor: "pointer", transition: "all 0.13s",
+                          border: `1px solid ${active ? "var(--accent-secondary)" : "var(--border-default)"}`,
+                          background: active ? "color-mix(in srgb, var(--accent-secondary) 10%, transparent)" : "var(--bg-subtle)",
+                          color: active ? "var(--accent-secondary)" : "var(--text-secondary)",
+                          fontWeight: active ? 600 : 400,
+                          opacity: isGenerating ? 0.5 : 1,
+                        }}
+                      >
+                        {ch.name}
+                        {ch.primary && <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>★</span>}
+                        <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 4 }}>{ch.budget_pct}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Content Pillar */}
+            {pillars.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Content Pillar
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {pillars.map((p, i) => {
+                    const active = criteria.pillarIdx === i;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleCriteriaChange({ ...criteria, pillarIdx: active ? null : i })}
+                        disabled={isGenerating}
+                        style={{
+                          padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "inherit", cursor: "pointer", transition: "all 0.13s",
+                          border: `1px solid ${active ? "#C084FC" : "var(--border-default)"}`,
+                          background: active ? "color-mix(in srgb, #C084FC 10%, transparent)" : "var(--bg-subtle)",
+                          color: active ? "#C084FC" : "var(--text-secondary)",
+                          fontWeight: active ? 600 : 400,
+                          opacity: isGenerating ? 0.5 : 1,
+                        }}
+                      >
+                        {p.name}
+                        <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 4 }}>{p.pct}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Hook Template */}
+            {hooks.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Hook Template
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {hooks.map((h, i) => {
+                    const active = criteria.hookIdx === i;
+                    const label = h.length > 52 ? h.slice(0, 49) + "…" : h;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleCriteriaChange({ ...criteria, hookIdx: active ? null : i })}
+                        disabled={isGenerating}
+                        style={{
+                          padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "inherit", cursor: "pointer", transition: "all 0.13s",
+                          border: `1px solid ${active ? "var(--warning)" : "var(--border-default)"}`,
+                          background: active ? "color-mix(in srgb, var(--warning) 10%, transparent)" : "var(--bg-subtle)",
+                          color: active ? "var(--warning)" : "var(--text-secondary)",
+                          fontWeight: active ? 600 : 400,
+                          opacity: isGenerating ? 0.5 : 1,
+                          maxWidth: 280, textAlign: "left",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Fallback: show extracted text when no structured data */
+          (() => {
+            const brief = extractBrief(project);
+            if (!brief.audience && !brief.angle) return null;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+                {[
+                  { label: "Audience",       text: brief.audience },
+                  { label: "Creative angle", text: brief.angle },
+                ].map(({ label, text }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{label}</div>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.55, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {text || <span style={{ color: "var(--text-tertiary)", fontStyle: "italic" }}>Not found in plan</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+        )}
       </div>
 
       {/* Generator card */}
       <div className="card" style={{ padding: "24px 28px" }}>
 
         {/* Prompt */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showPrompt ? 8 : 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
               Ad Prompt
             </label>
             <span style={{ fontSize: 10, color: "var(--accent-primary)", background: "rgba(90,200,214,0.10)", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
-              Auto-built from plan
+              {hasCriteria ? "Built from selections" : "Auto-built from plan"}
             </span>
           </div>
-          <button
-            onClick={() => setGen(g => ({ ...g, prompt: buildAutoPrompt(project) }))}
-            disabled={isGenerating}
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              background: "none", border: "1px solid var(--border-default)",
-              borderRadius: 8, padding: "4px 10px", cursor: "pointer",
-              fontSize: 11, color: "var(--text-tertiary)", fontFamily: "inherit",
-              opacity: isGenerating ? 0.4 : 1,
-            }}
-          >
-            <RefreshCw size={11} /> Refresh
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => setShowPrompt(v => !v)}
+              disabled={isGenerating}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: showPrompt ? "color-mix(in srgb, var(--accent-primary) 10%, transparent)" : "none",
+                border: `1px solid ${showPrompt ? "var(--accent-primary)" : "var(--border-default)"}`,
+                borderRadius: 8, padding: "4px 10px", cursor: "pointer",
+                fontSize: 11, color: showPrompt ? "var(--accent-primary)" : "var(--text-tertiary)",
+                fontFamily: "inherit", opacity: isGenerating ? 0.4 : 1, transition: "all 0.13s",
+              }}
+            >
+              {showPrompt ? <EyeOff size={11} /> : <Eye size={11} />}
+              {showPrompt ? "Hide" : "Edit Prompt"}
+            </button>
+            <button
+              onClick={() => {
+                const fresh = defaultCriteria(project);
+                setCriteria(fresh);
+                setGen(g => ({
+                  ...g,
+                  prompt: project.planVisualData
+                    ? buildPromptFromCriteria(project, fresh)
+                    : buildAutoPrompt(project),
+                }));
+              }}
+              disabled={isGenerating}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: "none", border: "1px solid var(--border-default)",
+                borderRadius: 8, padding: "4px 10px", cursor: "pointer",
+                fontSize: 11, color: "var(--text-tertiary)", fontFamily: "inherit",
+                opacity: isGenerating ? 0.4 : 1,
+              }}
+            >
+              <RefreshCw size={11} /> Refresh
+            </button>
+          </div>
         </div>
 
-        <textarea
-          value={gen.prompt}
-          onChange={e => setGen(g => ({ ...g, prompt: e.target.value }))}
-          disabled={isGenerating}
-          style={{
-            width: "100%", minHeight: 130, padding: "12px 14px",
-            background: "var(--bg-subtle)", border: "1px solid var(--border-default)",
-            borderRadius: 10, fontSize: 12, color: "var(--text-primary)",
-            fontFamily: "inherit", lineHeight: 1.75, resize: "vertical",
-            outline: "none", boxSizing: "border-box",
-            opacity: isGenerating ? 0.55 : 1,
-          }}
-          onFocus={e => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = "var(--border-default)"; }}
-        />
+        {showPrompt && (
+          <textarea
+            value={gen.prompt}
+            onChange={e => setGen(g => ({ ...g, prompt: e.target.value }))}
+            disabled={isGenerating}
+            style={{
+              width: "100%", minHeight: 130, padding: "12px 14px",
+              background: "var(--bg-subtle)", border: "1px solid var(--border-default)",
+              borderRadius: 10, fontSize: 12, color: "var(--text-primary)",
+              fontFamily: "inherit", lineHeight: 1.75, resize: "vertical",
+              outline: "none", boxSizing: "border-box",
+              opacity: isGenerating ? 0.55 : 1,
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "var(--border-default)"; }}
+          />
+        )}
 
         {/* Aspect ratio */}
         <div style={{ marginTop: 20, marginBottom: 20 }}>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, CheckCircle2, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { updateProject } from "@/lib/firebase/projects";
-import type { Project } from "@/lib/mock-data";
+import type { Project, PlanVisualData } from "@/lib/mock-data";
 
 interface GeneratePlanDialogProps {
   open: boolean;
@@ -68,7 +68,21 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
         setPlanText(full);
       }
 
-      await updateProject(uid, project.id, { marketingPlan: full, status: "active" });
+      function parseBlock(slug: string) {
+        const re = new RegExp("```json:" + slug + "\\n([\\s\\S]*?)```");
+        const m = full.match(re);
+        if (!m) return null;
+        try { return JSON.parse(m[1]); } catch { return null; }
+      }
+      const planVisualData: PlanVisualData = {
+        market:   parseBlock("market-analysis") ?? undefined,
+        channels: parseBlock("channels") ?? undefined,
+        content:  parseBlock("content") ?? undefined,
+        phases:   parseBlock("phases") ?? undefined,
+        kpi:      parseBlock("kpi") ?? undefined,
+        action:   parseBlock("action") ?? undefined,
+      };
+      await updateProject(uid, project.id, { marketingPlan: full, planVisualData, status: "active" });
       setStatus("complete");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");

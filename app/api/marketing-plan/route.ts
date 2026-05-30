@@ -82,7 +82,45 @@ Structure your plan with these sections:
 5. Key Performance Indicators & Benchmarks
 6. 30-Day Action Plan (prioritized quick wins)
 
-Be specific: name exact platforms, ad formats, audience segments, and realistic budget splits. Align all recommendations with the CPA and ROAS targets.`,
+Be specific: name exact platforms, ad formats, audience segments, and realistic budget splits. Align all recommendations with the CPA and ROAS targets.
+
+IMPORTANT: At the very start of each section below, embed the corresponding JSON data block BEFORE any narrative text. Use real data — no placeholders.
+
+--- Section 1: Market & Audience Analysis ---
+\`\`\`json:market-analysis
+{"stats":{"market_size":"","audience_size":"","growth_rate":"","competition":"Low|Medium|High"},"demographics":{"ages":[{"label":"13-17","pct":0},{"label":"18-24","pct":0},{"label":"25-34","pct":0},{"label":"35-44","pct":0},{"label":"45+","pct":0}],"gender":{"label_a":"Women","pct_a":0,"label_b":"Men","pct_b":0}},"regions":[{"name":"","priority":"Primary|Secondary|Tertiary","pct":0}],"platforms":[{"name":"","score":0}],"segments":[{"name":"","size":"","traits":["",""]}]}
+\`\`\`
+Rules: age pct sum=100, region pct sum=100, platform score 0-100, 3-5 platforms, 2-4 segments.
+
+--- Section 2: Marketing Channels & Budget Allocation ---
+\`\`\`json:channels
+{"total_budget":"","channels":[{"name":"","budget_pct":0,"formats":[""],"expected_roas":"","primary":false}]}
+\`\`\`
+Rules: budget_pct sum=100, exactly one channel has primary:true, 3-5 channels.
+
+--- Section 3: Content & Creative Strategy ---
+\`\`\`json:content
+{"tone":"","pillars":[{"name":"","pct":0,"description":""}],"formats":[{"type":"","platforms":[""],"frequency":"","score":0}],"hooks":["","",""]}
+\`\`\`
+Rules: pillar pct sum=100, format score 0-100, 3-5 pillars, 3-5 formats, exactly 3 hooks.
+
+--- Section 4: Campaign Phases ---
+\`\`\`json:phases
+{"phases":[{"name":"","duration":"","budget_pct":0,"objective":"","tactics":["","",""],"success_kpi":""}]}
+\`\`\`
+Rules: budget_pct sum=100, exactly 3 phases (Awareness, Testing, Scaling), 3 tactics each.
+
+--- Section 5: Key Performance Indicators & Benchmarks ---
+\`\`\`json:kpi
+{"primary_metrics":[{"name":"","target":"","benchmark":"","description":"","lower_is_better":true}],"secondary_metrics":[{"name":"","target":"","benchmark":"","lower_is_better":false}]}
+\`\`\`
+Rules: exactly 2 primary metrics (CPA then ROAS), 4-6 secondary metrics (CTR, CPM, Add-to-Cart Rate, Conversion Rate, etc).
+
+--- Section 6: 30-Day Action Plan ---
+\`\`\`json:action
+{"weeks":[{"label":"Week 1","focus":"","tasks":[{"task":"","priority":"high","owner":""}]}]}
+\`\`\`
+Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium", or "low".`,
             },
           ],
         },

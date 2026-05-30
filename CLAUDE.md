@@ -33,7 +33,13 @@ app/
   (app)/           → authenticated shell (Sidebar + AuthProvider + main area)
     layout.tsx     → wraps every app page with <AuthProvider> + <Sidebar>
     dashboard/     → /dashboard
-    projects/      → /projects  (and other sidebar pages as added)
+    projects/      → /projects  (project list)
+    projects/[id]/ → /projects/:id  (project detail — two tabs: Marketing Plan + Creative)
+  api/
+    marketing-plan/        → POST — streams AI marketing plan text (KIE AI)
+    generate-creative/     → POST — creates KIE AI image generation task; returns taskId
+    generate-creative/status/ → GET ?taskId=… — polls KIE AI for task result / imageUrl
+    download/              → GET ?url=… — server-proxies an image to force Content-Disposition download
   layout.tsx       → root: Cairo font + ThemeProvider
   page.tsx         → redirect → /login
 ```
@@ -50,9 +56,19 @@ Route group folders `(auth)` and `(app)` do **not** affect URLs.
 - `lib/firebase/config.ts` — lazy singleton `getFirebaseApp()`. Credentials are hardcoded client-side public keys — do **not** move to env vars.
 - `lib/firebase/auth.ts` — `"use client"`. Auth helpers: `signIn`, `signUp`, `signInWithGoogle`, `resetPassword`, `signOut`, `mapFirebaseError`, `getFirebaseAuth` (exported lazy getter).
 - `lib/firebase/firestore.ts` — `"use client"`. Lazy singleton `getFirebaseFirestore()`.
-- `lib/firebase/projects.ts` — `"use client"`. Project service: `createProject(uid, input)` and `subscribeToProjects(uid, cb)` (real-time `onSnapshot`). New domain services follow this pattern.
+- `lib/firebase/projects.ts` — `"use client"`. `createProject`, `deleteProject`, `updateProject`, `getProject`, `subscribeToProject` (single doc), `subscribeToProjects` (collection). New domain services follow this pattern.
+- `lib/firebase/creatives.ts` — `"use client"`. Manages manually uploaded creatives subcollection.
+- `lib/firebase/ai-creatives.ts` — `"use client"`. Manages AI-generated images: `createAiCreative`, `updateAiCreativeImageUrl`, `failAiCreative`, `deleteAiCreative`, `subscribeToAiCreatives`.
+- `lib/firebase/storage.ts` — `"use client"`. Firebase Storage upload helper (currently unused — superseded by Cloudinary).
+- `lib/cloudinary.ts` — `"use client"`. Compresses + uploads product images directly to Cloudinary with XHR progress. Called from `create-project-dialog.tsx` on project creation.
 
-**Firestore data model:** `users/{uid}/projects/{projectId}`. All Firebase modules use a lazy getter pattern — never call `getFirestore()` / `getAuth()` at module top-level (SSR safety).
+**Firestore data model:**
+```
+users/{uid}/projects/{projectId}
+  /creatives/{creativeId}      ← manually uploaded photo/video
+  /ai-creatives/{creativeId}   ← KIE AI generated images (status: pending | done | failed)
+```
+All Firebase modules use a lazy getter pattern — never call `getFirestore()` / `getAuth()` at module top-level (SSR safety).
 
 ### Design system
 
@@ -67,6 +83,16 @@ Reusable CSS class families defined in `globals.css`: `.card`, `.glass-card`, `.
 - Font: Cairo (loaded via `next/font/google` in root layout, variable `--font-cairo`). Applied globally via `body { font-family: "Cairo", ... }` in globals.css.
 - Tailwind v4 is present but used **minimally** (only utility classes like `min-h-screen`, `flex`, `flex-col`). Prefer CSS custom-property-based classes from globals.css.
 - Radius convention: 10px (`--radius-md`) for inputs/buttons/cards, 16px (`--radius-lg`) for larger cards/dialogs, 24px (`--radius-xl`) for hero elements.
+
+### External services & environment variables
+
+| Variable | Side | Purpose |
+|---|---|---|
+| `KIE_AI_API_KEY` | server | KIE AI — image generation (`nano-banana-2` model) + marketing plan text (`gpt-5-5` model via SSE stream) |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | client | Cloudinary upload target |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | client | Cloudinary unsigned upload preset |
+
+Store these in `.env.local` (not committed). The marketing-plan route streams SSE from KIE AI and re-streams raw delta text to the browser. The generate-creative flow is async: POST returns a `taskId`; the client polls `/api/generate-creative/status?taskId=…` until `status === "success"`.
 
 ### Mock data
 

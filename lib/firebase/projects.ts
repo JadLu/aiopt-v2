@@ -14,7 +14,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "./firestore";
-import type { Project } from "@/lib/mock-data";
+import type { Project, MarketAnalysisData, PlanVisualData } from "@/lib/mock-data";
 
 const EMOJI_POOL = ["📦", "🛍️", "💄", "📱", "🎮", "👟", "🏋️", "🌿", "✨", "🔧", "🎯", "🚀"];
 
@@ -47,6 +47,22 @@ function docToProject(id: string, d: Record<string, unknown>): Project {
       ? (d.createdAt as { toDate: () => Date }).toDate().toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0],
     marketingPlan: d.marketingPlan as string | undefined,
+    marketAnalysisData: (() => {
+      const raw = d.marketAnalysisData;
+      if (!raw) return undefined;
+      if (typeof raw === "string") {
+        try { return JSON.parse(raw) as MarketAnalysisData; } catch { return undefined; }
+      }
+      return raw as MarketAnalysisData;
+    })(),
+    planVisualData: (() => {
+      const raw = d.planVisualData;
+      if (!raw) return undefined;
+      if (typeof raw === "string") {
+        try { return JSON.parse(raw) as PlanVisualData; } catch { return undefined; }
+      }
+      return raw as PlanVisualData;
+    })(),
     productImageUrl: d.productImageUrl as string | undefined,
   };
 }
@@ -83,7 +99,7 @@ export async function deleteProject(uid: string, projectId: string): Promise<voi
 export async function updateProject(
   uid: string,
   projectId: string,
-  data: Partial<{ marketingPlan: string; productImageUrl: string; status: Project["status"] }>
+  data: Partial<{ marketingPlan: string; marketAnalysisData: MarketAnalysisData | null; planVisualData: PlanVisualData | null; productImageUrl: string; status: Project["status"] }>
 ): Promise<void> {
   const db = getFirebaseFirestore();
   await updateDoc(doc(db, "users", uid, "projects", projectId), {

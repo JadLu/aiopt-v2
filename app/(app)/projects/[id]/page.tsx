@@ -11,6 +11,12 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { subscribeToProject, deleteProject } from "@/lib/firebase/projects";
 import { GeneratePlanDialog } from "@/components/dashboard/generate-plan-dialog";
 import { MarkdownRenderer } from "@/components/marketing/markdown-renderer";
+import { MarketAnalysisVisual } from "@/components/marketing/market-analysis-visual";
+import { ChannelsVisual } from "@/components/marketing/channels-visual";
+import { ContentVisual } from "@/components/marketing/content-visual";
+import { PhasesVisual } from "@/components/marketing/phases-visual";
+import { KpiVisual } from "@/components/marketing/kpi-visual";
+import { ActionVisual } from "@/components/marketing/action-visual";
 import { CreativeStudio } from "@/components/projects/creative-studio";
 import type { Project } from "@/lib/mock-data";
 
@@ -267,7 +273,37 @@ export default function ProjectDetailPage() {
                           <Sparkles size={13} /> Regenerate
                         </button>
                       </div>
-                      {section ? (
+                      {activePlanSection === "market" ? (
+                        <MarketAnalysisVisual
+                          data={project.planVisualData?.market ?? project.marketAnalysisData}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : activePlanSection === "channels" ? (
+                        <ChannelsVisual
+                          data={project.planVisualData?.channels}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : activePlanSection === "content" ? (
+                        <ContentVisual
+                          data={project.planVisualData?.content}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : activePlanSection === "phases" ? (
+                        <PhasesVisual
+                          data={project.planVisualData?.phases}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : activePlanSection === "kpi" ? (
+                        <KpiVisual
+                          data={project.planVisualData?.kpi}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : activePlanSection === "action" ? (
+                        <ActionVisual
+                          data={project.planVisualData?.action}
+                          onRegenerate={() => setGeneratePlanOpen(true)}
+                        />
+                      ) : section ? (
                         <MarkdownRenderer content={section.content} />
                       ) : (
                         <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0, fontStyle: "italic" }}>

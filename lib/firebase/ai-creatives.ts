@@ -2,7 +2,7 @@
 
 import {
   collection, addDoc, onSnapshot, query, orderBy,
-  serverTimestamp, type Unsubscribe, doc, updateDoc,
+  serverTimestamp, type Unsubscribe, doc, updateDoc, deleteDoc,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "./firestore";
 
@@ -60,6 +60,15 @@ export async function failAiCreative(
     doc(db, "users", uid, "projects", projectId, "ai-creatives", creativeId),
     { status: "failed" }
   );
+}
+
+export async function deleteAiCreative(
+  uid: string,
+  projectId: string,
+  creativeId: string
+): Promise<void> {
+  const db = getFirebaseFirestore();
+  await deleteDoc(doc(db, "users", uid, "projects", projectId, "ai-creatives", creativeId));
 }
 
 export function subscribeToAiCreatives(

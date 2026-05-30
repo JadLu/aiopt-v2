@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Sparkles, Download, RefreshCw, MapPin, AlertCircle,
+  Sparkles, Download, RefreshCw, MapPin, AlertCircle, MoreVertical, Trash2, X,
 } from "lucide-react";
 import {
   createAiCreative, updateAiCreativeImageUrl, failAiCreative,
-  subscribeToAiCreatives, type AiCreative,
+  subscribeToAiCreatives, deleteAiCreative, type AiCreative,
 } from "@/lib/firebase/ai-creatives";
 import type { Project } from "@/lib/mock-data";
 
@@ -494,7 +494,7 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-            {aiCreatives.map(c => <AiCreativeCard key={c.id} creative={c} />)}
+            {aiCreatives.map(c => <AiCreativeCard key={c.id} creative={c} uid={uid} projectId={project.id} />)}
           </div>
         </div>
       )}
@@ -504,60 +504,125 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   );
 }
 
-// ─── Gallery card — display only, no polling ──────────────────────────────────
+// ─── Gallery card ─────────────────────────────────────────────────────────────
 
-function AiCreativeCard({ creative }: { creative: AiCreative }) {
-  const [imgError, setImgError] = useState(false);
-  // If a taskId exists and there's no image yet, the central poller is working on it — show spinner
+interface AiCreativeCardProps {
+  creative:  AiCreative;
+  uid:       string;
+  projectId: string;
+}
+
+function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
+  const [imgError,    setImgError]    = useState(false);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+  const [lightbox,    setLightbox]    = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+
   const isPending = !!creative.taskId && !creative.imageUrl;
-  // Only show "failed" when there's no taskId left to retry with
   const isFailed  = !creative.taskId && creative.status === "failed" && !creative.imageUrl;
+  const hasImage  = !!creative.imageUrl && !imgError;
+
+  async function handleDelete() {
+    setMenuOpen(false);
+    setDeleting(true);
+    try { await deleteAiCreative(uid, projectId, creative.id); }
+    catch { setDeleting(false); }
+  }
 
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ height: 200, background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+    <>
+      <div className="card" style={{ padding: 0, overflow: "hidden", opacity: deleting ? 0.45 : 1, transition: "opacity 0.2s" }}>
 
-        {isPending ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-              {creative.status === "failed" ? "Retrying…" : "Fetching image…"}
-            </span>
+        {/* Image area */}
+        <div
+          style={{ height: 200, background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", cursor: hasImage ? "pointer" : "default" }}
+          onClick={() => { if (hasImage) setLightbox(true); }}
+        >
+          {isPending ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
+              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Generating…</span>
+            </div>
+          ) : isFailed ? (
+            <span style={{ fontSize: 12, color: "var(--danger)" }}>Generation failed</span>
+          ) : hasImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={creative.imageUrl} alt={creative.prompt} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImgError(true)} />
+          ) : (
+            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Image unavailable</span>
+          )}
+
+          {/* Aspect ratio badge — bottom left */}
+          <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,0.55)", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#fff" }}>
+            {creative.aspectRatio} · {creative.resolution}
           </div>
-        ) : isFailed ? (
-          <span style={{ fontSize: 12, color: "var(--danger)" }}>Generation failed</span>
-        ) : creative.imageUrl && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={creative.imageUrl} alt={creative.prompt}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Image unavailable</span>
-        )}
 
-        <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.55)", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#fff" }}>
-          {creative.aspectRatio} · {creative.resolution}
+          {/* 3-dots menu — top right */}
+          <div style={{ position: "absolute", top: 6, right: 6 }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}
+            >
+              <MoreVertical size={14} />
+            </button>
+
+            {menuOpen && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden", minWidth: 130, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
+                  {hasImage && (
+                    <a
+                      href={creative.imageUrl} download target="_blank" rel="noopener noreferrer"
+                      onClick={() => setMenuOpen(false)}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", fontSize: 13, color: "var(--text-primary)", textDecoration: "none", fontFamily: "inherit" }}
+                    >
+                      <Download size={13} color="var(--text-secondary)" /> Save
+                    </a>
+                  )}
+                  <button
+                    onClick={handleDelete}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--danger)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {creative.imageUrl && !imgError && (
-          <a
-            href={creative.imageUrl} download target="_blank" rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.55)", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#fff", textDecoration: "none" }}
-          >
-            <Download size={10} /> Save
-          </a>
-        )}
+        {/* Card footer */}
+        <div style={{ padding: "10px 12px" }}>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 4px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
+            {creative.prompt}
+          </p>
+          <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0 }}>{creative.createdAt}</p>
+        </div>
       </div>
 
-      <div style={{ padding: "10px 12px" }}>
-        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 4px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
-          {creative.prompt}
-        </p>
-        <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0 }}>{creative.createdAt}</p>
-      </div>
-    </div>
+      {/* Lightbox */}
+      {lightbox && hasImage && (
+        <div className="dialog-overlay" style={{ zIndex: 100 }} onClick={() => setLightbox(false)}>
+          <div style={{ position: "relative", maxWidth: "min(90vw, 900px)", maxHeight: "90vh", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }} onClick={e => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={creative.imageUrl} alt={creative.prompt} style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, objectFit: "contain", boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }} />
+            <div style={{ display: "flex", gap: 10 }}>
+              <a
+                href={creative.imageUrl} download target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--accent-primary)", color: "#fff", textDecoration: "none", fontFamily: "inherit" }}
+              >
+                <Download size={13} /> Download
+              </a>
+              <button
+                onClick={() => setLightbox(false)}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <X size={13} /> Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

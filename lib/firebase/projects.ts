@@ -64,6 +64,7 @@ function docToProject(id: string, d: Record<string, unknown>): Project {
       return raw as PlanVisualData;
     })(),
     productImageUrl: d.productImageUrl as string | undefined,
+    marketingAngle: d.marketingAngle as string | undefined,
   };
 }
 
@@ -99,7 +100,7 @@ export async function deleteProject(uid: string, projectId: string): Promise<voi
 export async function updateProject(
   uid: string,
   projectId: string,
-  data: Partial<{ marketingPlan: string; marketAnalysisData: MarketAnalysisData | null; planVisualData: PlanVisualData | null; productImageUrl: string; status: Project["status"] }>
+  data: Partial<{ marketingPlan: string; marketAnalysisData: MarketAnalysisData | null; planVisualData: PlanVisualData | null; productImageUrl: string; status: Project["status"]; marketingAngle: string }>
 ): Promise<void> {
   const db = getFirebaseFirestore();
   await updateDoc(doc(db, "users", uid, "projects", projectId), {

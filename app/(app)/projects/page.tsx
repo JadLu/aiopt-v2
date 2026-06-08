@@ -11,7 +11,7 @@ import type { Project, ProjectStatus } from "@/lib/mock-data";
 
 const STATUS_LABELS: Record<string, string> = {
   "active": "Active", "in-draft": "In Draft", "testing": "Testing",
-  "scaling": "Scaling", "completed": "Completed", "archived": "Archived",
+  "completed": "Completed", "archived": "Archived",
 };
 
 function healthColor(score: number) {

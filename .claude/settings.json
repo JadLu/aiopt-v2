@@ -5,7 +5,8 @@
       "Bash(pnpm build *)",
       "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\arrad\\\\OneDrive\\\\Bureau\\\\AIOPT - v2\\\\app\\\\\\(app\\)\\\\creative\" -Force)",
       "Bash(Out-Null)",
-      "Bash(Write-Output \"done\")"
+      "Bash(Write-Output \"done\")",
+      "Read(//c/Users/arrad/.claude/projects/c--Users-arrad-OneDrive-Bureau-AIOPT---v2/memory/**)"
     ]
   }
 }

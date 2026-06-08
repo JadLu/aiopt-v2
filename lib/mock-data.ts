@@ -1,4 +1,4 @@
-export type ProjectStatus = "active" | "in-draft" | "testing" | "scaling" | "completed" | "archived";
+export type ProjectStatus = "active" | "in-draft" | "testing" | "completed" | "archived";
 
 export interface MarketAnalysisData {
   stats: {
@@ -101,6 +101,7 @@ export interface Project {
   marketAnalysisData?: MarketAnalysisData;
   planVisualData?: PlanVisualData;
   productImageUrl?: string;
+  marketingAngle?: string;
 }
 
 export interface Creative {
@@ -124,7 +125,7 @@ export interface Alert {
 export const MOCK_PROJECTS: Project[] = [
   { id: "1", name: "Wireless Earbuds Pro", description: "Premium wireless earbuds targeting UAE & KSA", emoji: "🎧", status: "active", country: "UAE", targetCpa: 12, targetRoas: 4.0, healthIndex: 82, cpa: 14.2, roas: 3.8, spend: 4200, lastActivity: "2m ago", createdAt: "2026-05-01" },
   { id: "2", name: "Posture Corrector", description: "Ergonomic back support for office workers", emoji: "🦴", status: "testing", country: "KSA", targetCpa: 18, targetRoas: 3.0, healthIndex: 58, cpa: 22.5, roas: 2.1, spend: 980, lastActivity: "18m ago", createdAt: "2026-05-08" },
-  { id: "3", name: "LED Face Mask", description: "Beauty device targeting women 25-40", emoji: "✨", status: "scaling", country: "EGY", targetCpa: 16, targetRoas: 3.5, healthIndex: 76, cpa: 18.9, roas: 3.1, spend: 7800, lastActivity: "1h ago", createdAt: "2026-04-20" },
+  { id: "3", name: "LED Face Mask", description: "Beauty device targeting women 25-40", emoji: "✨", status: "testing", country: "EGY", targetCpa: 16, targetRoas: 3.5, healthIndex: 76, cpa: 18.9, roas: 3.1, spend: 7800, lastActivity: "1h ago", createdAt: "2026-04-20" },
   { id: "4", name: "Portable Blender", description: "Fitness niche — protein shakes on the go", emoji: "🥤", status: "in-draft", country: "MAR", targetCpa: 20, targetRoas: 2.5, healthIndex: 0, cpa: 0, roas: 0, spend: 0, lastActivity: "3h ago", createdAt: "2026-05-15" },
   { id: "5", name: "Car Phone Mount", description: "Universal gravity mount — mass market", emoji: "📱", status: "completed", country: "UAE", targetCpa: 10, targetRoas: 4.0, healthIndex: 91, cpa: 9.4, roas: 4.6, spend: 12400, lastActivity: "2d ago", createdAt: "2026-03-10" },
   { id: "6", name: "Posture Cushion", description: "Memory foam seat cushion for long hours", emoji: "🪑", status: "active", country: "KSA", targetCpa: 20, targetRoas: 3.0, healthIndex: 44, cpa: 31.2, roas: 1.8, spend: 1650, lastActivity: "5m ago", createdAt: "2026-05-12" },

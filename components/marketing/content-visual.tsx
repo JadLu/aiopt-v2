@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Palette, MessageSquare } from "lucide-react";
+import { Sparkles, Play, Layers, Image, Film, FileText, Monitor } from "lucide-react";
 import type { ContentData } from "@/lib/mock-data";
 
 interface ContentVisualProps {
@@ -8,101 +8,113 @@ interface ContentVisualProps {
   onRegenerate: () => void;
 }
 
-function Bar({ pct, color = "var(--accent-primary)", height = 8 }: { pct: number; color?: string; height?: number }) {
-  return (
-    <div style={{ background: "var(--bg-subtle)", borderRadius: 99, overflow: "hidden", height }}>
-      <div style={{ width: `${Math.min(100, Math.max(0, pct))}%`, height: "100%", background: color, borderRadius: 99, transition: "width 0.4s ease" }} />
-    </div>
-  );
+function getPriorityStyle(score: number): { label: string; color: string } {
+  if (score >= 90) return { label: "Priority", color: "var(--danger)" };
+  if (score >= 65) return { label: "High",     color: "var(--warning)" };
+  if (score >= 40) return { label: "Med",      color: "var(--accent-secondary)" };
+  return               { label: "Low",      color: "var(--text-tertiary)" };
 }
 
-const PILLAR_COLORS = ["var(--accent-primary)", "var(--accent-secondary)", "#C084FC", "var(--warning)", "var(--success)"];
+function getFormatIcon(type: string) {
+  const t = type.toLowerCase();
+  if (t.includes("video") || t.includes("reel") || t.includes("ugc") || t.includes("hook"))
+    return <Play size={14} strokeWidth={1.9} />;
+  if (t.includes("carousel") || t.includes("slide"))
+    return <Layers size={14} strokeWidth={1.9} />;
+  if (t.includes("static") || t.includes("image") || t.includes("photo"))
+    return <Image size={14} strokeWidth={1.9} />;
+  if (t.includes("story") || t.includes("stories"))
+    return <Film size={14} strokeWidth={1.9} />;
+  if (t.includes("landing") || t.includes("page"))
+    return <Monitor size={14} strokeWidth={1.9} />;
+  return <FileText size={14} strokeWidth={1.9} />;
+}
+
+const CHIP_COLORS = [
+  "var(--accent-primary)",
+  "var(--accent-secondary)",
+  "#C084FC",
+  "var(--warning)",
+  "var(--success)",
+];
 
 export function ContentVisual({ data, onRegenerate }: ContentVisualProps) {
   if (!data) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "48px 24px", textAlign: "center" }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: "color-mix(in srgb, #C084FC 12%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Palette size={20} color="#C084FC" strokeWidth={1.6} />
-        </div>
-        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", margin: 0 }}>No visual data yet</p>
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>Regenerate the plan to get the graphical content strategy.</p>
-        <button className="btn-primary" style={{ width: "auto", marginTop: 4, padding: "8px 20px", fontSize: 13 }} onClick={onRegenerate}>
-          <Sparkles size={13} /> Regenerate Plan
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "28px 16px", textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>Regenerate the plan to get the content strategy.</p>
+        <button className="btn-primary" style={{ width: "auto", padding: "7px 18px", fontSize: 12 }} onClick={onRegenerate}>
+          <Sparkles size={12} /> Regenerate Plan
         </button>
       </div>
     );
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+  const sortedFormats = [...data.formats].sort((a, b) => b.score - a.score);
 
-      {/* Tone */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px", background: "color-mix(in srgb, #C084FC 8%, transparent)", border: "1px solid color-mix(in srgb, #C084FC 20%, transparent)", borderRadius: 12 }}>
-        <MessageSquare size={15} color="#C084FC" strokeWidth={1.8} />
-        <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Brand Tone</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginLeft: 4 }}>{data.tone}</span>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+      {/* Pillar chips */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        {data.pillars.map(({ name }, i) => (
+          <span
+            key={name}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 999,
+              fontSize: 12.5,
+              fontWeight: 600,
+              background: `color-mix(in srgb, ${CHIP_COLORS[i % CHIP_COLORS.length]} 12%, transparent)`,
+              color: CHIP_COLORS[i % CHIP_COLORS.length],
+              border: `1px solid color-mix(in srgb, ${CHIP_COLORS[i % CHIP_COLORS.length]} 22%, transparent)`,
+            }}
+          >
+            {name}
+          </span>
+        ))}
       </div>
 
-      {/* Two-column: pillars + formats */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-        {/* Content Pillars */}
-        <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "16px 18px" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 14 }}>Content Pillars</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {data.pillars.map(({ name, pct, description }, i) => (
-              <div key={name}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: PILLAR_COLORS[i % PILLAR_COLORS.length] }}>{pct}%</span>
-                </div>
-                <Bar pct={pct} color={PILLAR_COLORS[i % PILLAR_COLORS.length]} />
-                {description && (
-                  <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: "5px 0 0", lineHeight: 1.5 }}>{description}</p>
+      {/* Format rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {sortedFormats.map(({ type, platforms, score }) => {
+          const { label, color } = getPriorityStyle(score);
+          return (
+            <div
+              key={type}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 12px",
+                background: "var(--chip)", borderRadius: 10,
+              }}
+            >
+              <div style={{
+                width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                background: `color-mix(in srgb, var(--accent-secondary) 14%, transparent)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "var(--accent-secondary)",
+              }}>
+                {getFormatIcon(type)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{type}</div>
+                {platforms.length > 0 && (
+                  <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+                    {platforms.slice(0, 3).join(" · ")}
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Format Priority */}
-        <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "16px 18px" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 14 }}>Format Priority</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[...data.formats].sort((a, b) => b.score - a.score).map(({ type, platforms, frequency, score }) => (
-              <div key={type}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", flex: 1, marginRight: 8 }}>{type}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-secondary)", flexShrink: 0 }}>{score}</span>
-                </div>
-                <Bar pct={score} color="var(--accent-secondary)" />
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5 }}>
-                  {platforms.map((p) => (
-                    <span key={p} style={{ fontSize: 10, color: "var(--text-tertiary)", background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 5, padding: "1px 6px" }}>{p}</span>
-                  ))}
-                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: "auto" }}>{frequency}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              <span style={{
+                fontSize: 11, fontWeight: 600, color,
+                background: `color-mix(in srgb, ${color} 14%, transparent)`,
+                padding: "3px 9px", borderRadius: 999, flexShrink: 0,
+              }}>
+                {label}
+              </span>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Hook templates */}
-      {data.hooks.length > 0 && (
-        <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "16px 18px" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 12 }}>Hook Templates</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {data.hooks.map((hook, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 9 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#C084FC", flexShrink: 0, marginTop: 1 }}>#{i + 1}</span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{hook}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

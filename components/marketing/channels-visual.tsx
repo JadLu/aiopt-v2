@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, DollarSign, TrendingUp, Star } from "lucide-react";
+import { Sparkles, Clock } from "lucide-react";
 import type { ChannelsData } from "@/lib/mock-data";
 
 interface ChannelsVisualProps {
@@ -8,80 +8,117 @@ interface ChannelsVisualProps {
   onRegenerate: () => void;
 }
 
-function Bar({ pct, color = "var(--accent-secondary)", height = 8 }: { pct: number; color?: string; height?: number }) {
-  return (
-    <div style={{ background: "var(--bg-subtle)", borderRadius: 99, overflow: "hidden", height }}>
-      <div style={{ width: `${Math.min(100, Math.max(0, pct))}%`, height: "100%", background: color, borderRadius: 99, transition: "width 0.4s ease" }} />
-    </div>
-  );
+/* Brand-accurate platform colors */
+const PLATFORM_COLORS: Record<string, string> = {
+  meta:      "#1877F2",
+  facebook:  "#1877F2",
+  instagram: "#E1306C",
+  tiktok:    "#EE1D52",
+  snapchat:  "#FFCC00",
+  youtube:   "#FF0000",
+  google:    "#4285F4",
+  twitter:   "#1DA1F2",
+  x:         "#1DA1F2",
+  pinterest: "#E60023",
+  linkedin:  "#0A66C2",
+};
+
+function getPlatformColor(name: string): string {
+  const key = name.toLowerCase().split(/[\s·+,/]/)[0].trim();
+  return PLATFORM_COLORS[key] ?? "var(--accent-primary)";
+}
+
+/* Parse "$180/day" → 180, "$5,400/month" → 180, "$1,260/week" → 180 */
+function parseDailyRate(total: string): number | null {
+  const m = total.replace(/,/g, "").match(/([\d.]+)\s*\/\s*(day|month|week)/i);
+  if (!m) return null;
+  const amount = parseFloat(m[1]);
+  const period = m[2].toLowerCase();
+  if (period === "day")   return amount;
+  if (period === "week")  return Math.round(amount / 7);
+  if (period === "month") return Math.round(amount / 30);
+  return null;
 }
 
 export function ChannelsVisual({ data, onRegenerate }: ChannelsVisualProps) {
   if (!data) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "48px 24px", textAlign: "center" }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: "color-mix(in srgb, var(--accent-secondary) 12%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <DollarSign size={20} color="var(--accent-secondary)" strokeWidth={1.6} />
-        </div>
-        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", margin: 0 }}>No visual data yet</p>
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>Regenerate the plan to get the graphical channel breakdown.</p>
-        <button className="btn-primary" style={{ width: "auto", marginTop: 4, padding: "8px 20px", fontSize: 13 }} onClick={onRegenerate}>
-          <Sparkles size={13} /> Regenerate Plan
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "28px 16px", textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>Regenerate the plan to get the channel breakdown.</p>
+        <button className="btn-primary" style={{ width: "auto", padding: "7px 18px", fontSize: 12 }} onClick={onRegenerate}>
+          <Sparkles size={12} /> Regenerate Plan
         </button>
       </div>
     );
   }
 
   const sorted = [...data.channels].sort((a, b) => b.budget_pct - a.budget_pct);
+  const dailyRate = parseDailyRate(data.total_budget);
+  const primaryChannel = sorted.find((c) => c.primary);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {sorted.map((ch) => {
+        const color = getPlatformColor(ch.name);
+        const dailyCost = dailyRate ? Math.round(dailyRate * ch.budget_pct / 100) : null;
 
-      {/* Total budget header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "color-mix(in srgb, var(--accent-secondary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--accent-secondary) 20%, transparent)", borderRadius: 12 }}>
-        <DollarSign size={16} color="var(--accent-secondary)" strokeWidth={1.8} />
-        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Recommended Monthly Budget</span>
-        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginLeft: "auto" }}>{data.total_budget}</span>
-      </div>
-
-      {/* Channel cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {sorted.map((ch) => (
-          <div
-            key={ch.name}
-            style={{
-              background: "var(--bg-elevated)",
-              border: `1px solid ${ch.primary ? "var(--accent-secondary)" : "var(--border-default)"}`,
-              borderRadius: 12,
-              padding: "16px 18px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+        return (
+          <div key={ch.name}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+              {/* Platform dot + name */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{ch.name}</span>
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                  background: color,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: color === "#FFCC00" ? "#000" : "#fff" }}>
+                    {ch.name[0].toUpperCase()}
+                  </span>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{ch.name}</span>
                 {ch.primary && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, color: "var(--accent-secondary)", background: "color-mix(in srgb, var(--accent-secondary) 12%, transparent)", padding: "2px 7px", borderRadius: 99 }}>
-                    <Star size={9} fill="var(--accent-secondary)" /> Primary
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent-primary)", background: "color-mix(in srgb, var(--accent-primary) 12%, transparent)", padding: "2px 7px", borderRadius: 999 }}>
+                    Primary
                   </span>
                 )}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <TrendingUp size={11} strokeWidth={1.8} /> {ch.expected_roas}
-                </span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--accent-secondary)" }}>{ch.budget_pct}%</span>
+              {/* Pct + daily cost */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{ch.budget_pct}%</span>
+                {dailyCost !== null && (
+                  <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>${dailyCost}/day</span>
+                )}
               </div>
             </div>
 
-            <Bar pct={ch.budget_pct} color={ch.primary ? "var(--accent-secondary)" : "var(--accent-primary)"} />
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-              {ch.formats.map((f) => (
-                <span key={f} style={{ fontSize: 11, color: "var(--text-secondary)", background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 6, padding: "3px 8px" }}>{f}</span>
-              ))}
+            {/* Progress bar */}
+            <div style={{ height: 5, background: "var(--chip)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{
+                width: `${Math.min(100, ch.budget_pct)}%`,
+                height: "100%",
+                background: color,
+                borderRadius: 999,
+                transition: "width 0.5s var(--ease)",
+              }} />
             </div>
           </div>
-        ))}
+        );
+      })}
+
+      {/* Footer */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, marginTop: 4,
+        paddingTop: 12, borderTop: "1px solid var(--hairline)",
+        color: "var(--text-tertiary)", fontSize: 12,
+      }}>
+        <Clock size={12} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+        <span>
+          Total budget <strong style={{ color: "var(--text-primary)" }}>{data.total_budget}</strong>
+        </span>
+        {primaryChannel && (
+          <span style={{ marginLeft: "auto" }}>via {primaryChannel.name}</span>
+        )}
       </div>
     </div>
   );

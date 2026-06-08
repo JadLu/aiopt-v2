@@ -4,81 +4,216 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, FolderKanban,
-  Megaphone, Bot, Settings, ChevronLeft, ChevronRight, Layers
+  LayoutDashboard, FolderKanban, Palette,
+  Megaphone, Settings, ChevronLeft, ChevronRight, Bell, Zap
 } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { MOCK_ALERTS } from "@/lib/mock-data";
 
-const NAV = [
-  { label: "Dashboard",   href: "/dashboard",   icon: LayoutDashboard },
-  { label: "Projects",    href: "/projects",     icon: FolderKanban },
-  { label: "Advertising", href: "/advertising",  icon: Megaphone },
-  { label: "AI Assistant",href: "/ai-assistant", icon: Bot },
+const NAV_GROUPS = [
+  {
+    label: "Workspace",
+    items: [
+      { label: "Dashboard",      href: "/dashboard",   icon: LayoutDashboard },
+      { label: "Projects",       href: "/projects",    icon: FolderKanban },
+      { label: "Creative Studio",href: "/creative",    icon: Palette },
+      { label: "Advertising",    href: "/advertising", icon: Megaphone },
+      { label: "Alerts",         href: "/advertising", icon: Bell, badgeKey: "alerts" as const },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
-const BOTTOM_NAV = [
-  { label: "Settings", href: "/settings", icon: Settings },
-];
+function getInitials(name: string | null | undefined, email: string | null | undefined): string {
+  if (name) return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  if (email) return email[0].toUpperCase();
+  return "U";
+}
+
+function getFirstName(name: string | null | undefined, email: string | null | undefined): string {
+  if (name) return name.split(" ")[0];
+  if (email) return email.split("@")[0];
+  return "User";
+}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const { user, credits, creditsLoading } = useAuth();
+
+  const initials = getInitials(user?.displayName, user?.email);
+  const firstName = getFirstName(user?.displayName, user?.email);
+  const alertCount = MOCK_ALERTS.filter((a) => a.tier === "red").length;
 
   return (
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
-      {/* Logo */}
-      <div style={{ padding: "18px 16px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border-default)" }}>
+      {/* Brand */}
+      <div style={{
+        padding: collapsed ? "20px 14px 16px" : "20px 18px 16px",
+        display: "flex", alignItems: "center", gap: 10,
+        borderBottom: "1px solid var(--hairline)",
+      }}>
         <div style={{
-          width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
           background: "linear-gradient(135deg, #5AC8D6 0%, #6FB1E8 100%)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px rgba(90,200,214,0.30)",
+          boxShadow: "0 6px 16px rgba(90,200,214,.40)",
+          fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px",
         }}>
-          <Layers size={16} color="white" strokeWidth={2.2} />
+          A
         </div>
         {!collapsed && (
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>AIOPT</div>
-            <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>E-commerce Suite</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, letterSpacing: "-0.4px" }}>AIOPT</div>
+            <div style={{ fontSize: 10.5, color: "var(--text-tertiary)", marginTop: 2 }}>E-commerce Suite</div>
           </div>
         )}
       </div>
 
-      {/* Main nav */}
-      <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`sidebar-nav-item${active ? " active" : ""}`}
-              title={collapsed ? label : undefined}
-            >
-              <Icon size={17} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
-              <span className="nav-label">{label}</span>
-            </Link>
-          );
-        })}
+      {/* Nav groups */}
+      <nav style={{ flex: 1, padding: "14px 10px", display: "flex", flexDirection: "column", gap: 18, overflowY: "auto" }}>
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            {!collapsed && (
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: ".7px", textTransform: "uppercase", padding: "0 10px", marginBottom: 6 }}>
+                {group.label}
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {group.items.map(({ label, href, icon: Icon, badgeKey }) => {
+                const active = pathname === href || pathname.startsWith(href + "/");
+                const badge = badgeKey === "alerts" ? alertCount : 0;
+                return (
+                  <Link
+                    key={label}
+                    href={href}
+                    className={`sidebar-nav-item${active ? " active" : ""}`}
+                    title={collapsed ? label : undefined}
+                    style={{ justifyContent: "space-between" }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Icon size={18} strokeWidth={active ? 2.1 : 1.8} style={{ flexShrink: 0 }} />
+                      <span className="nav-label">{label}</span>
+                    </span>
+                    {badge > 0 && !collapsed && (
+                      <span style={{
+                        minWidth: 18, height: 18, padding: "0 5px",
+                        borderRadius: 999, background: "var(--danger)",
+                        color: "#fff", fontSize: 10.5, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        lineHeight: 1,
+                      }}>
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Bottom section */}
-      <div style={{ padding: "8px 8px 16px", borderTop: "1px solid var(--border-default)", display: "flex", flexDirection: "column", gap: 2 }}>
-        {BOTTOM_NAV.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link key={href} href={href} className={`sidebar-nav-item${active ? " active" : ""}`} title={collapsed ? label : undefined}>
-              <Icon size={17} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-              <span className="nav-label">{label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Theme toggle row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", marginTop: 4 }}>
-          <ThemeToggle />
-          {!collapsed && <span style={{ fontSize: 13, color: "var(--text-tertiary)" }}>Theme</span>}
-        </div>
+      {/* User card */}
+      <div style={{ padding: "10px 10px 18px", borderTop: "1px solid var(--hairline)" }}>
+        {!collapsed && (
+          <div className="user-card" style={{ alignItems: "center" }}>
+            <div className="user-avatar" style={{ flexShrink: 0 }}>{initials}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="user-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{firstName}</div>
+              <div className="user-plan">Pro · workspace</div>
+            </div>
+            {/* Credits chip — inline with user card */}
+            {!creditsLoading && credits !== null && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "3px 7px",
+                  borderRadius: "var(--r-input)",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--border-default)",
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Zap
+                  size={11}
+                  style={{
+                    flexShrink: 0,
+                    color: credits < 10
+                      ? "var(--danger)"
+                      : credits < 50
+                      ? "var(--warning)"
+                      : "var(--accent-primary)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: credits < 10
+                      ? "var(--danger)"
+                      : credits < 50
+                      ? "var(--warning)"
+                      : "var(--accent-primary)",
+                  }}
+                >
+                  {credits.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Collapsed: avatar + small credits badge stacked */}
+        {collapsed && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <div className="user-avatar">{initials}</div>
+            {!creditsLoading && credits !== null && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  padding: "2px 5px",
+                  borderRadius: "var(--r-input)",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--border-default)",
+                }}
+              >
+                <Zap
+                  size={10}
+                  style={{
+                    color: credits < 10
+                      ? "var(--danger)"
+                      : credits < 50
+                      ? "var(--warning)"
+                      : "var(--accent-primary)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: credits < 10
+                      ? "var(--danger)"
+                      : credits < 50
+                      ? "var(--warning)"
+                      : "var(--accent-primary)",
+                  }}
+                >
+                  {credits}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Collapse toggle */}
@@ -88,16 +223,15 @@ export function Sidebar() {
         style={{
           position: "absolute", top: 68, right: -12,
           width: 24, height: 24, borderRadius: "50%",
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border-default)",
+          background: "var(--glass-strong)", border: "1px solid var(--hairline)",
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer", color: "var(--text-tertiary)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-          transition: "color 0.13s, background-color 0.13s",
-          zIndex: 1,
+          boxShadow: "var(--card-shadow)",
+          backdropFilter: "blur(12px)",
+          transition: "color 0.13s", zIndex: 1,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-tertiary)"; e.currentTarget.style.background = "var(--bg-elevated)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-tertiary)"; }}
       >
         {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
       </button>

@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, CheckCircle2, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { updateProject } from "@/lib/firebase/projects";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
+import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import type { Project, PlanVisualData } from "@/lib/mock-data";
 
 interface GeneratePlanDialogProps {
@@ -17,9 +20,11 @@ type GenStatus = "generating" | "complete" | "error";
 
 export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlanDialogProps) {
   const router = useRouter();
+  const { credits } = useAuth();
   const [status, setStatus] = useState<GenStatus>("generating");
   const [planText, setPlanText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const started = useRef(false);
 
@@ -33,7 +38,7 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
     }
     if (started.current) return;
     started.current = true;
-    generate();
+    checkAndGenerate();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -42,6 +47,17 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [planText]);
+
+  async function checkAndGenerate() {
+    const result = await deductCredits(uid, CREDIT_COSTS.MARKETING_PLAN);
+    if (!result.success) {
+      setCreditModalOpen(true);
+      setStatus("error");
+      setErrorMsg("Insufficient credits.");
+      return;
+    }
+    await generate();
+  }
 
   async function generate() {
     try {
@@ -85,16 +101,28 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
       await updateProject(uid, project.id, { marketingPlan: full, planVisualData, status: "active" });
       setStatus("complete");
     } catch (err) {
+      await refundCredits(uid, CREDIT_COSTS.MARKETING_PLAN);
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
       setStatus("error");
     }
   }
 
-  if (!open) return null;
+  // Render InsufficientCreditsModal outside the open guard so it persists when open=false
+  const insufficientModal = (
+    <InsufficientCreditsModal
+      open={creditModalOpen}
+      onClose={() => { setCreditModalOpen(false); onClose(); }}
+      required={CREDIT_COSTS.MARKETING_PLAN}
+      balance={credits ?? 0}
+    />
+  );
+
+  if (!open) return insufficientModal;
 
   const canClose = status !== "generating";
 
   return (
+    <>
     <div
       className="dialog-overlay"
       onClick={canClose ? onClose : undefined}
@@ -239,5 +267,7 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
         )}
       </div>
     </div>
+    {insufficientModal}
+    </>
   );
 }

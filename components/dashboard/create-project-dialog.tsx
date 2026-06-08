@@ -134,7 +134,7 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, letterSpacing: "0.04em" }}>PRODUCT DESCRIPTION</label>
             <textarea
               className="auth-input"
-              placeholder="Brief description of your product and target audience..."
+              placeholder="Brief description of your product and marketing angle..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

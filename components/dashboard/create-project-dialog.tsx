@@ -86,8 +86,8 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
         let url: string;
         try {
           url = await uploadProductImage(user.uid, projectId, imageFile, setUploadProgress);
-        } catch {
-          setError("Image upload failed — check your Firebase Storage rules, then try again.");
+        } catch (err) {
+          setError(`Image upload failed — ${err instanceof Error ? err.message : "unknown error"}`);
           return;
         }
         await updateProject(user.uid, projectId, { productImageUrl: url });

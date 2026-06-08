@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import { ChevronUp, ChevronDown, Pause, Play, Loader2 } from "lucide-react";
 import type { MetaCampaign } from "@/lib/firebase/meta-campaigns";
 import { CampaignHealthBadge } from "./campaign-health-badge";
@@ -52,7 +53,7 @@ export function CampaignTable({ campaigns, accessToken, onCampaignUpdated }: Pro
     const action = campaign.status === "ACTIVE" ? "PAUSE" : "ACTIVE";
     setActionLoading(campaign.id);
     try {
-      const res = await fetch("/api/meta/campaign-action", {
+      const res = await authFetch("/api/meta/campaign-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

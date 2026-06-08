@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 import { computeHealthScore } from "@/lib/advertising-utils";
 import type { MetaCampaign } from "@/lib/firebase/meta-campaigns";
 
@@ -122,6 +123,12 @@ async function fetchCampaigns(
 }
 
 export async function POST(request: NextRequest) {
+  let verifiedUid: string;
+  try { verifiedUid = await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   let body: SyncBody;
   try {
     body = (await request.json()) as SyncBody;
@@ -129,9 +136,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { uid, accountId, accessToken, targetRoas, targetCpa } = body;
+  // Use uid from verified token — never trust the uid from the request body.
+  const { accountId, accessToken, targetRoas, targetCpa } = body;
+  const uid = verifiedUid;
 
-  if (!uid || !accountId || !accessToken) {
+  if (!accountId || !accessToken) {
     return NextResponse.json(
       { error: "uid, accountId and accessToken are required" },
       { status: 400 }

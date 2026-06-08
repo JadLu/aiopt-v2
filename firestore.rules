@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // All app data lives under users/{userId}/** — only the owning user can read/write.
+    // This covers projects, creatives, ai-creatives, ai-videos, video-clips,
+    // rendered-videos, ai-landing-pages, meta-accounts, meta-campaigns,
+    // ad-alerts, alert-rules, and credits subcollections.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Block everything else by default (implicit deny).
+  }
+}

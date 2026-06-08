@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Sparkles, AlertCircle, MoreVertical, Download, X, Trash2, Play } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { authFetch } from "@/lib/auth-fetch";
 import { deductCredits, refundCredits, videoCreditCost } from "@/lib/firebase/credits";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import { CreditTooltip } from "@/components/credits/CreditTooltip";
@@ -181,7 +182,7 @@ export function VideoStudio({ project, uid }: VideoStudioProps) {
           return;
         }
         try {
-          const res = await fetch(`/api/generate-video/status?taskId=${taskId}`);
+          const res = await authFetch(`/api/generate-video/status?taskId=${taskId}`);
           const raw = await res.json() as Record<string, unknown>;
           const { isDone, isFailed, url } = parseVideoKieResponse(raw);
 
@@ -235,7 +236,7 @@ export function VideoStudio({ project, uid }: VideoStudioProps) {
     setGen(g => ({ ...g, status: "submitting", error: null, videoUrl: null, taskId: null }));
     try {
       const imageUrls: string[] = project.productImageUrl ? [project.productImageUrl] : [];
-      const res  = await fetch("/api/generate-video", {
+      const res  = await authFetch("/api/generate-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

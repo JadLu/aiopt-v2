@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 
 const KIE_AI_CHAT_API = "https://api.kie.ai/codex/v1/responses";
 
@@ -50,6 +51,11 @@ interface CampaignContext {
 }
 
 export async function POST(request: NextRequest) {
+  try { await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   const apiKey = process.env.KIE_AI_API_KEY;
   if (!apiKey) {
     return new Response("KIE_AI_API_KEY is not configured", { status: 500 });

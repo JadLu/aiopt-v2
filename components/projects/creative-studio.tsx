@@ -6,6 +6,7 @@ import {
   ImageIcon, Video, Globe,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { authFetch } from "@/lib/auth-fetch";
 import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import { CreditTooltip } from "@/components/credits/CreditTooltip";
@@ -273,7 +274,7 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
           return;
         }
         try {
-          const res = await fetch(`/api/generate-creative/status?taskId=${taskId}`);
+          const res = await authFetch(`/api/generate-creative/status?taskId=${taskId}`);
           const raw = await res.json() as Record<string, unknown>;
           const { isDone, isFailed, url } = parseKieResponse(raw);
 
@@ -335,7 +336,7 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
       };
       if (project.productImageUrl) body.imageInput = [project.productImageUrl];
 
-      const res  = await fetch("/api/generate-creative", {
+      const res  = await authFetch("/api/generate-creative", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });

@@ -1,8 +1,14 @@
 import { type NextRequest } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 
 const KIE_AI_BASE = "https://api.kie.ai";
 
 export async function GET(request: NextRequest) {
+  try { await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   const taskId = request.nextUrl.searchParams.get("taskId");
   if (!taskId) return new Response("taskId is required", { status: 400 });
 

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 
 const KIE_CLAUDE_URL = "https://api.kie.ai/claude/v1/messages";
 
@@ -222,6 +223,11 @@ interface RequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  try { await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   const apiKey = process.env.KIE_AI_API_KEY;
   if (!apiKey) {
     return new Response("KIE_AI_API_KEY is not configured", { status: 500 });

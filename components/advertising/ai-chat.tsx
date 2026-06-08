@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import { MessageCircle, X, Send, Bot, User, Loader } from "lucide-react";
 import type { MetaCampaign } from "@/lib/firebase/meta-campaigns";
 import type { AdAlert } from "@/lib/firebase/ad-alerts";
@@ -80,7 +81,7 @@ export function AiChat({ campaigns, alerts }: Props) {
     setMessages([...nextMessages, assistantPlaceholder]);
 
     try {
-      const res = await fetch("/api/advertising/chat", {
+      const res = await authFetch("/api/advertising/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -5,6 +5,7 @@ import { X, Sparkles, CheckCircle2, AlertCircle, ExternalLink, Loader2 } from "l
 import { useRouter } from "next/navigation";
 import { updateProject } from "@/lib/firebase/projects";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { authFetch } from "@/lib/auth-fetch";
 import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import type { Project, PlanVisualData } from "@/lib/mock-data";
@@ -61,7 +62,7 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
 
   async function generate() {
     try {
-      const res = await fetch("/api/marketing-plan", {
+      const res = await authFetch("/api/marketing-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project }),

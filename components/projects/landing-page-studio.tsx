@@ -7,6 +7,7 @@ import {
   ChevronDown, Plus, Copy, Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { authFetch } from "@/lib/auth-fetch";
 import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import { CreditTooltip } from "@/components/credits/CreditTooltip";
@@ -630,7 +631,7 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
       });
       pendingDocRef.current = docId;
 
-      const res = await fetch("/api/generate-landing-page", {
+      const res = await authFetch("/api/generate-landing-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

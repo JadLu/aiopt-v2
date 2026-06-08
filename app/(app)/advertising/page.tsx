@@ -36,6 +36,7 @@ import {
   type CreateAlertRuleInput,
 } from "@/lib/firebase/alert-rules";
 import { isStale } from "@/lib/advertising-utils";
+import { authFetch } from "@/lib/auth-fetch";
 import { ConnectMetaBanner } from "@/components/advertising/connect-meta-banner";
 import { StatsBar } from "@/components/advertising/stats-bar";
 import { CampaignTable } from "@/components/advertising/campaign-table";
@@ -205,11 +206,10 @@ function AdvertisingPageInner() {
       if (!uid || syncing) return;
       setSyncing(true);
       try {
-        const res = await fetch("/api/meta/sync", {
+        const res = await authFetch("/api/meta/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            uid,
             accountId: account.id,
             accessToken: account.accessToken,
             targetRoas: account.targetRoas,

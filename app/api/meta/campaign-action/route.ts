@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 
 type CampaignAction = "PAUSE" | "ACTIVE";
 
@@ -9,6 +10,11 @@ interface ActionBody {
 }
 
 export async function POST(request: NextRequest) {
+  try { await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   let body: ActionBody;
   try {
     body = (await request.json()) as ActionBody;

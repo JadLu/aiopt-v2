@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
 
 const KIE_AI_API = "https://api.kie.ai/codex/v1/responses";
 
@@ -18,6 +19,11 @@ Your expertise covers:
 Generate comprehensive, actionable, data-driven marketing plans tailored to the specific MENA country and product. Always structure plans with clear sections, specific platforms and tactics, budget recommendations, and measurable goals aligned with the given performance targets.`;
 
 export async function POST(request: NextRequest) {
+  try { await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
   const apiKey = process.env.KIE_AI_API_KEY;
   if (!apiKey) {
     return new Response("KIE_AI_API_KEY is not configured", { status: 500 });

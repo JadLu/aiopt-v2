@@ -151,6 +151,7 @@ Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium
       const decoder = new TextDecoder();
       let buffer = "";
       let currentEvent = "";
+      let lastHeartbeat = Date.now();
 
       try {
         while (true) {
@@ -175,6 +176,7 @@ Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium
                   const parsed = JSON.parse(dataStr) as { delta?: string };
                   if (parsed.delta) {
                     controller.enqueue(encoder.encode(parsed.delta));
+                    lastHeartbeat = Date.now();
                   }
                 } catch {
                   // skip malformed JSON
@@ -183,6 +185,12 @@ Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium
             } else if (line === "") {
               currentEvent = "";
             }
+          }
+
+          // Send heartbeat comment every 10s of inactivity to keep connection alive
+          if (Date.now() - lastHeartbeat > 10000) {
+            controller.enqueue(encoder.encode(": heartbeat\n"));
+            lastHeartbeat = Date.now();
           }
         }
       } catch (err) {

@@ -5,3 +5,12 @@
 # Omit Cloudinary public vars from secrets scanning — they're meant to be client-side
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET"
+
+# Set function timeout to max (26s for free, 30s for pro)
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    "x-function-max-age" = "30"

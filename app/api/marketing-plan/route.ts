@@ -187,8 +187,8 @@ Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium
             }
           }
 
-          // Send heartbeat comment every 10s of inactivity to keep connection alive
-          if (Date.now() - lastHeartbeat > 10000) {
+          // Send heartbeat comment every 5s of inactivity to keep connection alive
+          if (Date.now() - lastHeartbeat > 5000) {
             controller.enqueue(encoder.encode(": heartbeat\n"));
             lastHeartbeat = Date.now();
           }

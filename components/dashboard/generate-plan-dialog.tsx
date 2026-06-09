@@ -82,12 +82,16 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         full += chunk;
-        setPlanText(full);
+        // Filter out heartbeat comments for display (but keep in full for parsing later)
+        const displayText = full.replace(/: heartbeat\n/g, "");
+        setPlanText(displayText);
       }
 
       function parseBlock(slug: string) {
+        // Remove heartbeat comments before parsing blocks
+        const cleaned = full.replace(/: heartbeat\n/g, "");
         const re = new RegExp("```json:" + slug + "\\n([\\s\\S]*?)```");
-        const m = full.match(re);
+        const m = cleaned.match(re);
         if (!m) return null;
         try { return JSON.parse(m[1]); } catch { return null; }
       }
@@ -103,7 +107,9 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
       const cleanedData = Object.fromEntries(
         Object.entries(planVisualData).filter(([, v]) => v !== null)
       );
-      await updateProject(uid, project.id, { marketingPlan: full, planVisualData: cleanedData, status: "active" });
+      // Remove heartbeat comments from saved plan text
+      const cleanedPlan = full.replace(/: heartbeat\n/g, "");
+      await updateProject(uid, project.id, { marketingPlan: cleanedPlan, planVisualData: cleanedData, status: "active" });
       setStatus("complete");
     } catch (err) {
       await refundCredits(uid, CREDIT_COSTS.MARKETING_PLAN);

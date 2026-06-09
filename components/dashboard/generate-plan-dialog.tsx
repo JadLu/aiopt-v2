@@ -92,14 +92,18 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
         try { return JSON.parse(m[1]); } catch { return null; }
       }
       const planVisualData: PlanVisualData = {
-        market:   parseBlock("market-analysis") ?? undefined,
-        channels: parseBlock("channels") ?? undefined,
-        content:  parseBlock("content") ?? undefined,
-        phases:   parseBlock("phases") ?? undefined,
-        kpi:      parseBlock("kpi") ?? undefined,
-        action:   parseBlock("action") ?? undefined,
+        market:   parseBlock("market-analysis"),
+        channels: parseBlock("channels"),
+        content:  parseBlock("content"),
+        phases:   parseBlock("phases"),
+        kpi:      parseBlock("kpi"),
+        action:   parseBlock("action"),
       };
-      await updateProject(uid, project.id, { marketingPlan: full, planVisualData, status: "active" });
+      // Remove undefined fields — Firestore doesn't support undefined values
+      const cleanedData = Object.fromEntries(
+        Object.entries(planVisualData).filter(([, v]) => v !== null)
+      );
+      await updateProject(uid, project.id, { marketingPlan: full, planVisualData: cleanedData, status: "active" });
       setStatus("complete");
     } catch (err) {
       await refundCredits(uid, CREDIT_COSTS.MARKETING_PLAN);

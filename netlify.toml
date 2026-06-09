@@ -1,0 +1,7 @@
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+# Don't flag NEXT_PUBLIC_* vars as exposed secrets — they're meant to be client-side
+[build.environment]
+  FORCE_SKIPPED_SECRETS = "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET"

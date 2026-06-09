@@ -29,7 +29,7 @@ function userRef(uid: string) {
 }
 
 /**
- * Set credits:100 only if the field doesn't already exist.
+ * Set credits:0 only if the field doesn't already exist.
  * Safe to call on every sign-in — idempotent via transaction.
  */
 export async function initUserCredits(uid: string): Promise<void> {
@@ -38,7 +38,7 @@ export async function initUserCredits(uid: string): Promise<void> {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists() || snap.data()?.credits === undefined) {
-      tx.set(ref, { credits: 100, createdAt: serverTimestamp() }, { merge: true });
+      tx.set(ref, { credits: 0, createdAt: serverTimestamp() }, { merge: true });
     }
   });
 }

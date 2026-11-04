@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AIOPT New Project</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Cairo:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#05060A}
+*{box-sizing:border-box}
+a{color:#7FE7F5;text-decoration:none}a:hover{color:#B5F3FB}
+button{font:inherit;cursor:pointer;border:0;color:inherit;background:none}
+:focus-visible{outline:2px solid #7FE7F5;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:rgba(235,240,255,.42)}
+.g{position:relative;isolation:isolate;background:linear-gradient(160deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.05) 42%,rgba(255,255,255,.03) 100%);-webkit-backdrop-filter:blur(36px) saturate(180%);backdrop-filter:blur(36px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.24),inset 0 -1px 0 rgba(255,255,255,.04),0 1px 2px rgba(0,0,0,.3),0 40px 90px -30px rgba(0,0,0,.85)}
+.g::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.6),rgba(255,255,255,.08) 30%,rgba(255,255,255,0) 55%,rgba(255,255,255,.06) 75%,rgba(255,255,255,.3));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:-1}
+.g2{background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07)}
+.well{background:rgba(0,0,0,.28);box-shadow:inset 0 2px 6px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);transition:box-shadow .2s}
+.well:focus-within{box-shadow:inset 0 2px 6px rgba(0,0,0,.35),inset 0 0 0 1px rgba(127,231,245,.55),0 0 0 4px rgba(127,231,245,.12)}
+.lq{background:linear-gradient(180deg,#A8F4FF 0%,#5AD2EC 52%,#2BA3C9 100%);color:#03141B;box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 -3px 8px rgba(0,60,80,.35),0 12px 30px -10px rgba(76,201,230,.75),0 0 0 1px rgba(255,255,255,.2)}
+.nav{transition:background .2s}.nav:hover{background:rgba(255,255,255,.09)}
+.num{font-variant-numeric:tabular-nums}
+.scroll{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+</style>
+</helmet>
+<div style="position: relative; overflow: hidden; min-height: 1560px; background: #05060A; color: #F4F6FA; font-family: 'Inter Tight', 'Cairo', system-ui, sans-serif; display: flex; align-items: flex-start; justify-content: center; padding: 56px 16px">
+<div aria-hidden="true" style="position: absolute; width: 760px; height: 760px; right: -120px; top: -220px; border-radius: 50%; background: radial-gradient(circle, rgba(64,214,236,.55), rgba(64,214,236,0) 65%); filter: blur(30px)"></div>
+<div aria-hidden="true" style="position: absolute; width: 820px; height: 820px; left: -80px; top: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(70,110,255,.45), rgba(70,110,255,0) 65%); filter: blur(40px)"></div>
+<div aria-hidden="true" style="position: absolute; width: 560px; height: 560px; left: 620px; top: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(167,120,250,.3), rgba(167,120,250,0) 65%); filter: blur(40px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(3,4,8,.45)"></div>
+
+<section class="g" role="dialog" aria-modal="true" aria-labelledby="np-title" style="position: relative; z-index: 1; width: 100%; max-width: 720px; border-radius: 34px; padding: 32px; display: flex; flex-direction: column; gap: 26px">
+
+<header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px">
+<div style="display: flex; align-items: center; gap: 14px">
+<span style="width: 48px; height: 48px; border-radius: 16px; flex: none; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 30% 22%, #E9FDFF 0%, #7FE7F5 32%, #2B8FD0 74%, #1B4B9A 100%); box-shadow: inset 0 1px 1px rgba(255,255,255,.85), inset 0 -4px 8px rgba(10,40,90,.5), 0 10px 24px -8px rgba(76,201,230,.7); color: #04202B"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 id="np-title" style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em">New project</h1>
+<span style="font-size: 14px; color: rgba(235,240,255,.66)">Tell us about the product and where you’ll sell it</span>
+</div>
+</div>
+<a href="Projects.dc.html" aria-label="Close" class="g2 nav" style="width: 40px; height: 40px; border-radius: 14px; flex: none; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+</header>
+
+<div style="border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(160deg, rgba(127,231,245,.14), rgba(127,231,245,.03)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(127,231,245,.26)">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FE7F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>Start from a product link</span>
+<span style="font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 9px; background: rgba(127,231,245,.2); color: #C7F8FF">Fastest</span>
+</div>
+<span style="font-size: 13px; line-height: 1.5; color: rgba(235,240,255,.7)">Paste an AliExpress, Amazon or Shopify link. We’ll fill in the name, description and photo for you to check.</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<label class="well" style="flex: 1 1 280px; display: flex; align-items: center; height: 48px; padding: 0 16px; border-radius: 16px">
+<input type="url" aria-label="Product link" placeholder="https://" style="flex: 1; min-width: 0; background: none; border: 0; outline: none; color: #F4F6FA; font: inherit; font-size: 14.5px">
+</label>
+<button type="button" class="lq" style="height: 48px; padding: 0 22px; border-radius: 16px; font-size: 14px; font-weight: 700; color: #03141B">Import</button>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; font-size: 12px; letter-spacing: .1em; font-weight: 600; color: rgba(235,240,255,.55)">
+<span style="flex: 1; height: 1px; background: rgba(255,255,255,.1)"></span>OR FILL IN MANUALLY<span style="flex: 1; height: 1px; background: rgba(255,255,255,.1)"></span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 18px">
+<label style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; letter-spacing: .12em; font-weight: 600; color: rgba(235,240,255,.66)">PRODUCT NAME</span>
+<span class="well" style="display: flex; align-items: center; height: 52px; padding: 0 16px; border-radius: 18px">
+<input type="text" maxlength="80" placeholder="e.g. Wireless Earbuds Pro" style="flex: 1; min-width: 0; background: none; border: 0; outline: none; color: #F4F6FA; font: inherit; font-size: 15px">
+</span>
+</label>
+
+<label style="display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 11px; letter-spacing: .12em; font-weight: 600; color: rgba(235,240,255,.66)">DESCRIPTION</span>
+<span class="num" style="font-size: 12px; color: rgba(235,240,255,.55)">0 / 500</span>
+</span>
+<span class="well" style="display: flex; border-radius: 18px">
+<textarea rows="3" maxlength="500" placeholder="What it does, who it’s for, and what makes it different" style="flex: 1; resize: none; background: none; border: 0; outline: none; color: #F4F6FA; font: inherit; font-size: 14.5px; line-height: 1.5; padding: 14px 16px"></textarea>
+</span>
+<span style="font-size: 12.5px; color: rgba(235,240,255,.58)">The AI uses this to write your marketing plan. Arabic or English both work.</span>
+</label>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; letter-spacing: .12em; font-weight: 600; color: rgba(235,240,255,.66)">PRODUCT PHOTO <span style="letter-spacing: 0; font-weight: 400; opacity: .8">· optional</span></span>
+<button type="button" style="display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 20px; border: 1.5px dashed rgba(255,255,255,.18); background: rgba(255,255,255,.025); text-align: left">
+<span class="g2" style="width: 52px; height: 52px; border-radius: 16px; flex: none; display: flex; align-items: center; justify-content: center; color: #7FE7F5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 14px; font-weight: 600">Drop a photo or <span style="color: #7FE7F5">browse</span></span>
+<span style="font-size: 12.5px; color: rgba(235,240,255,.58)">PNG, JPG or WebP, up to 10 MB. Helps the AI match your product in creatives.</span>
+</span>
+</button>
+</div>
+</div>
+
+<div style="height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.12), rgba(255,255,255,0))"></div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 11px; letter-spacing: .12em; font-weight: 600; color: rgba(235,240,255,.66)">TARGET MARKETS</span>
+<span class="num" style="font-size: 13px; color: #7FE7F5; font-weight: 600">{{count}}</span>
+</div>
+<label class="well" style="display: flex; align-items: center; gap: 8px; height: 40px; width: 240px; max-width: 100%; padding: 0 12px; border-radius: 14px; color: rgba(235,240,255,.6)">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input type="search" aria-label="Search all countries" placeholder="Search all countries" value="{{q}}" onChange="{{onQ}}" style="flex: 1; min-width: 0; background: none; border: 0; outline: none; color: #F4F6FA; font: inherit; font-size: 13.5px">
+</label>
+</div>
+
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+<sc-for list="{{selected}}" as="s" hint-placeholder-count="1">
+<button type="button" onClick="{{s.remove}}" aria-label="Remove {{s.name}}" style="height: 30px; padding: 0 8px 0 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #D4FAFF; background: rgba(127,231,245,.14); box-shadow: inset 0 0 0 1px rgba(127,231,245,.32)">{{s.name}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</sc-for>
+<button type="button" onClick="{{clearAll}}" style="height: 30px; padding: 0 8px; font-size: 12.5px; font-weight: 600; color: rgba(235,240,255,.66)">Clear all</button>
+</div>
+</sc-if>
+
+<sc-if value="{{browsing}}" hint-placeholder-val="{{true}}">
+<div class="g2" role="tablist" aria-label="Regions" style="display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 16px">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="6">
+<sc-if value="{{t.active}}" hint-placeholder-val="{{false}}">
+<button type="button" role="tab" aria-selected="true" onClick="{{t.pick}}" style="height: 36px; padding: 0 14px; border-radius: 12px; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #05060A; background: linear-gradient(180deg, #FFFFFF, #DDE6F0); box-shadow: inset 0 1px 0 #fff, 0 4px 12px -4px rgba(0,0,0,.5)">{{t.name}}<sc-if value="{{t.badge}}" hint-placeholder-val="{{false}}"><span class="num" style="min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: #0B7E99; color: #fff">{{t.n}}</span></sc-if></button>
+</sc-if>
+<sc-if value="{{t.idle}}" hint-placeholder-val="{{true}}">
+<button type="button" role="tab" aria-selected="false" onClick="{{t.pick}}" class="nav" style="height: 36px; padding: 0 14px; border-radius: 12px; display: flex; align-items: center; gap: 7px; font-size: 13px; color: rgba(235,240,255,.78)">{{t.name}}<sc-if value="{{t.badge}}" hint-placeholder-val="{{false}}"><span class="num" style="min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: rgba(127,231,245,.22); color: #C7F8FF">{{t.n}}</span></sc-if></button>
+</sc-if>
+</sc-for>
+</div>
+</sc-if>
+
+<div class="scroll" style="max-height: 440px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px">
+<sc-for list="{{groups}}" as="grp" hint-placeholder-count="4">
+<div class="g2" style="border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13.5px; font-weight: 600">{{grp.name}}</span>
+<span style="font-size: 12px; color: rgba(235,240,255,.58)">{{grp.sub}}</span>
+</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{grp.countries}}" as="c" hint-placeholder-count="5">
+<sc-if value="{{c.sel}}" hint-placeholder-val="{{false}}">
+<button type="button" aria-pressed="true" onClick="{{c.pick}}" style="height: 38px; padding: 0 13px 0 5px; border-radius: 13px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #D4FAFF; background: linear-gradient(180deg, rgba(127,231,245,.26), rgba(127,231,245,.09)); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 1px rgba(127,231,245,.48), 0 6px 18px -8px rgba(76,201,230,.75)">
+<span style="width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #A8F4FF, #2BA3C9); color: #03141B; box-shadow: inset 0 1px 0 rgba(255,255,255,.7)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg></span>{{c.name}}</button>
+</sc-if>
+<sc-if value="{{c.off}}" hint-placeholder-val="{{true}}">
+<button type="button" aria-pressed="false" onClick="{{c.pick}}" class="nav" style="height: 38px; padding: 0 13px 0 5px; border-radius: 13px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; color: rgba(235,240,255,.86); background: rgba(255,255,255,.04); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 0 1px rgba(255,255,255,.08)">
+<span style="width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; color: rgba(235,240,255,.72); background: rgba(255,255,255,.07)">{{c.code}}</span>{{c.name}}</button>
+</sc-if>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{none}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 13px; color: rgba(235,240,255,.6); padding: 8px 2px">No country matches that search.</span>
+</sc-if>
+</div>
+</div>
+
+<footer style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 4px">
+<span style="font-size: 12.5px; color: rgba(235,240,255,.58)">Your plan starts writing right away. You can leave while it runs.</span>
+<div style="display: flex; gap: 10px">
+<a href="Projects.dc.html" class="g2 nav" style="height: 48px; padding: 0 22px; border-radius: 16px; display: flex; align-items: center; font-size: 14px; font-weight: 600; color: #F4F6FA">Cancel</a>
+<a href="Project.dc.html" class="lq" style="height: 48px; padding: 0 24px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 700; color: #03141B"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"></path></svg>Create &amp; generate plan</a>
+</div>
+</footer>
+
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { sel: { LY: true }, q: '', region: 'mena' };
+}
+renderVals() {
+const R = [
+{ id: 'mena', name: 'MENA', groups: [
+{ name: 'Gulf & Peninsula', sub: 'Khaleeji Arabic', list: [['SA', 'Saudi Arabia'], ['AE', 'UAE'], ['KW', 'Kuwait'], ['QA', 'Qatar'], ['BH', 'Bahrain'], ['OM', 'Oman'], ['YE', 'Yemen']] },
+{ name: 'Levant & Iraq', sub: 'Shami · Iraqi Arabic', list: [['JO', 'Jordan'], ['LB', 'Lebanon'], ['PS', 'Palestine'], ['SY', 'Syria'], ['IQ', 'Iraq']] },
+{ name: 'Nile Valley', sub: 'Egyptian · Sudanese Arabic', list: [['EG', 'Egypt'], ['SD', 'Sudan']] },
+{ name: 'Maghreb', sub: 'Maghrebi Arabic · Darija', list: [['MA', 'Morocco'], ['DZ', 'Algeria'], ['TN', 'Tunisia'], ['LY', 'Libya'], ['MR', 'Mauritania']] },
+{ name: 'Rest of the region', sub: 'Turkish · Persian · Hebrew', list: [['TR', 'Türkiye'], ['IR', 'Iran'], ['IL', 'Israel']] }
+] },
+{ id: 'eu', name: 'Europe', groups: [
+{ name: 'Western Europe', sub: '', list: [['GB', 'United Kingdom'], ['FR', 'France'], ['DE', 'Germany'], ['NL', 'Netherlands'], ['BE', 'Belgium'], ['CH', 'Switzerland'], ['AT', 'Austria'], ['IE', 'Ireland'], ['LU', 'Luxembourg'], ['LI', 'Liechtenstein'], ['MC', 'Monaco']] },
+{ name: 'Northern Europe', sub: '', list: [['SE', 'Sweden'], ['NO', 'Norway'], ['DK', 'Denmark'], ['FI', 'Finland'], ['IS', 'Iceland'], ['EE', 'Estonia'], ['LV', 'Latvia'], ['LT', 'Lithuania']] },
+{ name: 'Southern Europe', sub: '', list: [['ES', 'Spain'], ['IT', 'Italy'], ['PT', 'Portugal'], ['GR', 'Greece'], ['CY', 'Cyprus'], ['MT', 'Malta'], ['HR', 'Croatia'], ['SI', 'Slovenia'], ['RS', 'Serbia'], ['BA', 'Bosnia & Herzegovina'], ['ME', 'Montenegro'], ['MK', 'North Macedonia'], ['AL', 'Albania'], ['XK', 'Kosovo'], ['AD', 'Andorra'], ['SM', 'San Marino'], ['VA', 'Vatican City']] },
+{ name: 'Eastern Europe', sub: '', list: [['PL', 'Poland'], ['CZ', 'Czechia'], ['SK', 'Slovakia'], ['HU', 'Hungary'], ['RO', 'Romania'], ['BG', 'Bulgaria'], ['UA', 'Ukraine'], ['MD', 'Moldova'], ['BY', 'Belarus'], ['RU', 'Russia']] }
+] },
+{ id: 'am', name: 'Americas', groups: [
+{ name: 'North America', sub: '', list: [['US', 'United States'], ['CA', 'Canada'], ['MX', 'Mexico']] },
+{ name: 'Central America & Caribbean', sub: '', list: [['GT', 'Guatemala'], ['BZ', 'Belize'], ['HN', 'Honduras'], ['SV', 'El Salvador'], ['NI', 'Nicaragua'], ['CR', 'Costa Rica'], ['PA', 'Panama'], ['CU', 'Cuba'], ['DO', 'Dominican Republic'], ['HT', 'Haiti'], ['JM', 'Jamaica'], ['BS', 'Bahamas'], ['BB', 'Barbados'], ['TT', 'Trinidad & Tobago'], ['AG', 'Antigua & Barbuda'], ['DM', 'Dominica'], ['GD', 'Grenada'], ['KN', 'Saint Kitts & Nevis'], ['LC', 'Saint Lucia'], ['VC', 'Saint Vincent & the Grenadines']] },
+{ name: 'South America', sub: '', list: [['BR', 'Brazil'], ['AR', 'Argentina'], ['CO', 'Colombia'], ['CL', 'Chile'], ['PE', 'Peru'], ['VE', 'Venezuela'], ['EC', 'Ecuador'], ['BO', 'Bolivia'], ['PY', 'Paraguay'], ['UY', 'Uruguay'], ['GY', 'Guyana'], ['SR', 'Suriname']] }
+] },
+{ id: 'af', name: 'Africa', groups: [
+{ name: 'West Africa', sub: '', list: [['NG', 'Nigeria'], ['GH', 'Ghana'], ['CI', 'Côte d’Ivoire'], ['SN', 'Senegal'], ['ML', 'Mali'], ['BF', 'Burkina Faso'], ['NE', 'Niger'], ['GN', 'Guinea'], ['BJ', 'Benin'], ['TG', 'Togo'], ['SL', 'Sierra Leone'], ['LR', 'Liberia'], ['GM', 'Gambia'], ['GW', 'Guinea-Bissau'], ['CV', 'Cabo Verde']] },
+{ name: 'East Africa', sub: '', list: [['KE', 'Kenya'], ['ET', 'Ethiopia'], ['TZ', 'Tanzania'], ['UG', 'Uganda'], ['RW', 'Rwanda'], ['BI', 'Burundi'], ['SO', 'Somalia'], ['DJ', 'Djibouti'], ['ER', 'Eritrea'], ['SS', 'South Sudan'], ['KM', 'Comoros'], ['MG', 'Madagascar'], ['MU', 'Mauritius'], ['SC', 'Seychelles'], ['MW', 'Malawi'], ['MZ', 'Mozambique'], ['ZM', 'Zambia'], ['ZW', 'Zimbabwe']] },
+{ name: 'Central Africa', sub: '', list: [['CD', 'DR Congo'], ['CG', 'Congo'], ['CM', 'Cameroon'], ['AO', 'Angola'], ['GA', 'Gabon'], ['TD', 'Chad'], ['CF', 'Central African Republic'], ['GQ', 'Equatorial Guinea'], ['ST', 'São Tomé & Príncipe']] },
+{ name: 'Southern Africa', sub: '', list: [['ZA', 'South Africa'], ['NA', 'Namibia'], ['BW', 'Botswana'], ['LS', 'Lesotho'], ['SZ', 'Eswatini']] }
+] },
+{ id: 'as', name: 'Asia', groups: [
+{ name: 'South Asia', sub: '', list: [['IN', 'India'], ['PK', 'Pakistan'], ['BD', 'Bangladesh'], ['LK', 'Sri Lanka'], ['NP', 'Nepal'], ['BT', 'Bhutan'], ['MV', 'Maldives'], ['AF', 'Afghanistan']] },
+{ name: 'Southeast Asia', sub: '', list: [['ID', 'Indonesia'], ['MY', 'Malaysia'], ['SG', 'Singapore'], ['TH', 'Thailand'], ['VN', 'Vietnam'], ['PH', 'Philippines'], ['MM', 'Myanmar'], ['KH', 'Cambodia'], ['LA', 'Laos'], ['BN', 'Brunei'], ['TL', 'Timor-Leste']] },
+{ name: 'East Asia', sub: '', list: [['CN', 'China'], ['JP', 'Japan'], ['KR', 'South Korea'], ['TW', 'Taiwan'], ['MN', 'Mongolia'], ['KP', 'North Korea']] },
+{ name: 'Central Asia & Caucasus', sub: '', list: [['KZ', 'Kazakhstan'], ['UZ', 'Uzbekistan'], ['KG', 'Kyrgyzstan'], ['TJ', 'Tajikistan'], ['TM', 'Turkmenistan'], ['AZ', 'Azerbaijan'], ['GE', 'Georgia'], ['AM', 'Armenia']] }
+] },
+{ id: 'oc', name: 'Oceania', groups: [
+{ name: 'Oceania', sub: '', list: [['AU', 'Australia'], ['NZ', 'New Zealand'], ['PG', 'Papua New Guinea'], ['FJ', 'Fiji'], ['SB', 'Solomon Islands'], ['VU', 'Vanuatu'], ['WS', 'Samoa'], ['TO', 'Tonga'], ['KI', 'Kiribati'], ['FM', 'Micronesia'], ['MH', 'Marshall Islands'], ['PW', 'Palau'], ['NR', 'Nauru'], ['TV', 'Tuvalu']] }
+] }
+];
+const sel = this.state.sel || {};
+const q = (this.state.q || '').trim().toLowerCase();
+const regionId = this.state.region || 'mena';
+const names = {};
+R.forEach((r) => r.groups.forEach((g) => g.list.forEach((c) => { names[c[0]] = c[1]; })));
+const toggle = (code) => {
+const s = Object.assign({}, this.state.sel);
+if (s[code]) delete s[code]; else s[code] = true;
+this.setState({ sel: s });
+};
+const build = (g, label) => {
+const all = g.list.every((c) => sel[c[0]]);
+const countries = g.list
+.filter((c) => !q || c[1].toLowerCase().indexOf(q) !== -1 || c[0].toLowerCase() === q)
+.map((c) => ({ code: c[0], name: c[1], sel: !!sel[c[0]], off: !sel[c[0]], pick: () => toggle(c[0]) }));
+return {
+name: label,
+sub: g.sub,
+countries,
+allLabel: all ? 'Clear' : 'Select all',
+toggleAll: () => {
+const s = Object.assign({}, this.state.sel);
+g.list.forEach((c) => { if (all) delete s[c[0]]; else s[c[0]] = true; });
+this.setState({ sel: s });
+}
+};
+};
+let groups;
+if (q) {
+groups = [];
+R.forEach((r) => r.groups.forEach((g) => groups.push(build(g, g.name === r.name ? r.name : r.name + ' · ' + g.name))));
+} else {
+const region = R.find((r) => r.id === regionId) || R[0];
+groups = region.groups.map((g) => build(g, g.name));
+}
+groups = groups.filter((g) => g.countries.length > 0);
+const tabs = R.map((r) => {
+let n = 0;
+r.groups.forEach((g) => g.list.forEach((c) => { if (sel[c[0]]) n++; }));
+return { name: r.name, n, badge: n > 0, active: r.id === regionId, idle: r.id !== regionId, pick: () => this.setState({ region: r.id }) };
+});
+const codes = Object.keys(sel);
+const n = codes.length;
+return {
+groups,
+tabs,
+browsing: !q,
+none: groups.length === 0,
+selected: codes.map((code) => ({ name: names[code] || code, remove: () => toggle(code) })),
+hasSel: n > 0,
+clearAll: () => this.setState({ sel: {} }),
+count: n === 0 ? 'Pick at least one market' : (n === 1 ? '1 market selected' : n + ' markets selected'),
+q: this.state.q,
+onQ: (e) => this.setState({ q: e.target.value })
+};
+}
+}
+</script>
+</body>
+</html>

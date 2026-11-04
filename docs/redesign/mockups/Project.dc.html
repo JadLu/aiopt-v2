@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AIOPT Project Workspace</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&amp;family=Cairo:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#05060A}
+*{box-sizing:border-box}
+a{color:#7FE7F5;text-decoration:none}a:hover{color:#B5F3FB}
+button{font:inherit;cursor:pointer;border:0;color:inherit;background:none}
+:focus-visible{outline:2px solid #7FE7F5;outline-offset:2px}
+.g{position:relative;isolation:isolate;background:linear-gradient(160deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.045) 42%,rgba(255,255,255,.025) 100%);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.04),0 1px 2px rgba(0,0,0,.3),0 30px 60px -24px rgba(0,0,0,.7)}
+.g::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.08) 30%,rgba(255,255,255,0) 55%,rgba(255,255,255,.06) 75%,rgba(255,255,255,.3));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:-1}
+.g2{background:rgba(255,255,255,.055);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07)}
+.lq{background:linear-gradient(180deg,#A8F4FF 0%,#5AD2EC 52%,#2BA3C9 100%);color:#03141B;box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 -3px 8px rgba(0,60,80,.35),0 12px 30px -10px rgba(76,201,230,.75),0 0 0 1px rgba(255,255,255,.2)}
+.lift{transition:transform .25s cubic-bezier(.2,.8,.2,1)}.lift:hover{transform:translateY(-3px)}
+.nav{transition:background .2s}.nav:hover{background:rgba(255,255,255,.08)}
+.num{font-variant-numeric:tabular-nums}
+.trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shim{background:linear-gradient(110deg,rgba(255,255,255,.04) 30%,rgba(255,255,255,.13) 50%,rgba(255,255,255,.04) 70%);background-size:250% 100%;animation:shim 1.8s linear infinite}
+@keyframes shim{from{background-position:120% 0}to{background-position:-120% 0}}
+.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div style="position: relative; overflow: hidden; min-height: 1120px; background: #05060A; color: #F4F6FA; font-family: 'Inter Tight', 'Cairo', system-ui, sans-serif">
+<div aria-hidden="true" style="position: absolute; width: 760px; height: 760px; right: -200px; top: -260px; border-radius: 50%; background: radial-gradient(circle, rgba(64,214,236,.5), rgba(64,214,236,0) 65%); filter: blur(30px)"></div>
+<div aria-hidden="true" style="position: absolute; width: 820px; height: 820px; left: 80px; top: 560px; border-radius: 50%; background: radial-gradient(circle, rgba(70,110,255,.42), rgba(70,110,255,0) 65%); filter: blur(40px)"></div>
+<div aria-hidden="true" style="position: absolute; width: 600px; height: 600px; left: 760px; top: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(167,120,250,.28), rgba(167,120,250,0) 65%); filter: blur(40px)"></div>
+
+<div style="position: relative; z-index: 1; display: flex; flex-wrap: wrap; min-height: 1120px">
+
+<aside class="g" style="flex: 1 1 232px; max-width: 100%; margin: 16px; border-radius: 28px; padding: 20px 14px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; align-items: center; gap: 12px; padding: 4px 8px">
+<div style="width: 40px; height: 40px; border-radius: 14px; background: radial-gradient(circle at 30% 22%, #E9FDFF 0%, #7FE7F5 32%, #2B8FD0 74%, #1B4B9A 100%); box-shadow: inset 0 1px 1px rgba(255,255,255,.85), inset 0 -4px 8px rgba(10,40,90,.5), 0 8px 20px -6px rgba(76,201,230,.6); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #04202B; font-size: 17px">A</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-weight: 700; font-size: 16px; letter-spacing: -0.01em">AIOPT</span>
+<span style="font-size: 11.5px; color: rgba(235,240,255,.62)">E‑commerce Suite</span>
+</div>
+</div>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 10.5px; letter-spacing: .14em; color: rgba(235,240,255,.55); padding: 0 12px 6px; font-weight: 600">WORKSPACE</span>
+<a href="Main.dc.html" class="nav" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; color: rgba(235,240,255,.74); font-size: 14px; font-weight: 500">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Dashboard</a>
+<a href="Projects.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; color: #F4F6FA; font-size: 14px; font-weight: 600; background: linear-gradient(90deg, rgba(127,231,245,.18), rgba(127,231,245,.04)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(127,231,245,.24), 0 8px 24px -10px rgba(76,201,230,.55)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7FE7F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Projects</a>
+<a href="CreativeStudio.dc.html" class="nav" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; color: rgba(235,240,255,.74); font-size: 14px; font-weight: 500">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect></svg>Library</a>
+<a href="#" class="nav" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; color: rgba(235,240,255,.74); font-size: 14px; font-weight: 500">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span style="flex: 1">Notifications</span><span class="num" style="min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: linear-gradient(180deg, #A8F4FF, #2BA3C9); color: #03141B; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.6)">1</span></a>
+<span style="font-size: 10.5px; letter-spacing: .14em; color: rgba(235,240,255,.55); padding: 18px 12px 6px; font-weight: 600">ACCOUNT</span>
+<a href="#" class="nav" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; color: rgba(235,240,255,.74); font-size: 14px; font-weight: 500">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>Settings</a>
+</nav>
+<div class="g2" style="margin-top: auto; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #D9E4FF, #7C8CFF 55%, #3A3FA8); box-shadow: inset 0 1px 1px rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #0B0F2A">JD</div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 600">Jaco</span>
+<span style="font-size: 11.5px; color: rgba(235,240,255,.62)">Pro · workspace</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08)">
+<span class="num" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg width="14" height="14" viewBox="0 0 24 24" fill="#7FE7F5" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>700 credits</span>
+<a href="#" style="font-size: 12.5px; font-weight: 600">Top up</a>
+</div>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px 16px; display: flex; flex-direction: column; gap: 22px">
+
+<nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(235,240,255,.62)">
+<a href="Projects.dc.html" style="color: rgba(235,240,255,.72)">Projects</a>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+<span dir="rtl" style="font-family: 'Cairo', sans-serif; color: #F4F6FA">مسند اليد للسيارات</span>
+</nav>
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<div style="display: flex; align-items: center; gap: 16px; min-width: 0">
+<span style="width: 64px; height: 64px; border-radius: 20px; flex: none; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 120%, rgba(127,231,245,.45), rgba(127,231,245,0) 70%), rgba(255,255,255,.07); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 0 0 1px rgba(255,255,255,.08); color: rgba(235,240,255,.85)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M4 7.5l8 4.5 8-4.5M12 12v9"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+<h1 dir="auto" style="margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; font-family: 'Cairo', 'Inter Tight', sans-serif; line-height: 1.2">مسند اليد للسيارات</h1>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 10px; background: rgba(127,231,245,.14); color: #BFF6FF"><span class="pulse" style="width: 6px; height: 6px; border-radius: 50%; background: #7FE7F5; box-shadow: 0 0 8px #7FE7F5"></span>Writing plan</span>
+<span class="g2" style="display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 10px; color: rgba(235,240,255,.8)"><span style="font-size: 10px; font-weight: 700; color: #7FE7F5">LY</span>Libya</span>
+<span class="g2" style="font-size: 12px; padding: 4px 10px; border-radius: 10px; color: rgba(235,240,255,.8)">Libyan Arabic voice</span>
+</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button class="g" aria-label="Project options" style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button>
+<a href="CreativeStudio.dc.html" class="lq lift" style="height: 44px; padding: 0 20px 0 16px; border-radius: 22px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: #03141B"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"></path></svg>Generate test set</a>
+</div>
+</header>
+
+<ol class="g" aria-label="Project steps" style="list-style: none; margin: 0; border-radius: 24px; padding: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px">
+<li><a href="NewProject.dc.html" class="nav" style="height: 58px; border-radius: 18px; padding: 0 14px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span style="width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #A8F4FF, #2BA3C9); color: #03141B; box-shadow: inset 0 1px 0 rgba(255,255,255,.7)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Brief</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">Done</span></span></a></li>
+<li><span aria-current="step" style="height: 58px; border-radius: 18px; padding: 0 14px; display: flex; align-items: center; gap: 12px; background: linear-gradient(90deg, rgba(127,231,245,.2), rgba(127,231,245,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(127,231,245,.3), 0 8px 24px -10px rgba(76,201,230,.55)">
+<span style="position: relative; width: 30px; height: 30px; flex: none">
+<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"></circle><circle cx="15" cy="15" r="12" fill="none" stroke="#7FE7F5" stroke-width="3" stroke-linecap="round" stroke-dasharray="56.5 75.4" transform="rotate(-90 15 15)"></circle></svg>
+<span class="num" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">2</span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Plan</span><span class="num" style="font-size: 12px; color: #9FEFFA">Writing · 3 of 4</span></span></span></li>
+<li><a href="CreativeStudio.dc.html" class="nav" style="height: 58px; border-radius: 18px; padding: 0 14px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span class="g2 num" style="width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">3</span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Creatives</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">Pick an angle first</span></span></a></li>
+<li><a href="#" class="nav" style="height: 58px; border-radius: 18px; padding: 0 14px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span class="g2 num" style="width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">4</span>
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; font-weight: 600">Library</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">Download &amp; export</span></span></a></li>
+</ol>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<aside style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 11px; letter-spacing: .12em; font-weight: 600; color: rgba(235,240,255,.62); padding: 0 4px">MARKETING PLAN</span>
+<a href="#" class="g lift" style="border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span style="width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(74,222,128,.15); color: #86EFAC"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Customer avatar</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">Who buys, and why</span></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a href="#" class="g lift" style="border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span style="width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(74,222,128,.15); color: #86EFAC"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Offer</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">Price, bundle, guarantee</span></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a href="#" class="g lift" style="border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; color: #F4F6FA">
+<span style="width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(74,222,128,.15); color: #86EFAC"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Beliefs &amp; objections</span><span style="font-size: 12px; color: rgba(235,240,255,.6)">What to overcome</span></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+<div style="border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; background: linear-gradient(90deg, rgba(127,231,245,.16), rgba(127,231,245,.04)); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(127,231,245,.28)">
+<span class="pulse" style="width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: rgba(127,231,245,.18); color: #7FE7F5"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"></path></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Marketing angles</span><span style="font-size: 12px; color: #9FEFFA">Writing now</span></span></div>
+<div class="g2" style="border-radius: 18px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; margin-top: 6px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FE7F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+<span style="font-size: 12.5px; line-height: 1.5; color: rgba(235,240,255,.72)">You can leave this page. We’ll notify you when the plan is ready.</span>
+</div>
+</aside>
+
+<section aria-label="Marketing angles" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em">Marketing angles</h2>
+<span style="font-size: 13.5px; color: rgba(235,240,255,.62)">Pick the angles to test. Each one becomes a set of creatives.</span>
+</div>
+<button class="g2 nav" style="height: 38px; padding: 0 14px; border-radius: 13px; display: flex; align-items: center; gap: 7px; font-size: 13px; color: rgba(235,240,255,.85)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"></path></svg>Regenerate all</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px">
+
+<article class="g lift" style="border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 0 0 1px rgba(127,231,245,.35), 0 30px 60px -24px rgba(0,0,0,.7)">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span class="num" style="font-size: 12px; font-weight: 700; color: #7FE7F5; letter-spacing: .08em">ANGLE 1</span>
+<div style="display: flex; gap: 4px">
+<button aria-label="Starred" aria-pressed="true" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #FFD27A"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg></button>
+<button aria-label="Regenerate angle" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.75)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"></path></svg></button>
+</div>
+</div>
+<h3 dir="rtl" style="margin: 0; font-size: 19px; font-weight: 700; font-family: 'Cairo', sans-serif; line-height: 1.35">أصحاب السيارات اليومية</h3>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: rgba(235,240,255,.6)">[Who this angle speaks to and why it should convert, written by the plan]</p>
+<a href="CreativeStudio.dc.html" class="lq" style="margin-top: auto; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: #03141B">Use this angle<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</article>
+
+<article class="g lift" style="border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span class="num" style="font-size: 12px; font-weight: 700; color: rgba(235,240,255,.6); letter-spacing: .08em">ANGLE 2</span>
+<div style="display: flex; gap: 4px">
+<button aria-label="Star angle" aria-pressed="false" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.75)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg></button>
+<button aria-label="Regenerate angle" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.75)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"></path></svg></button>
+</div>
+</div>
+<h3 dir="rtl" style="margin: 0; font-size: 19px; font-weight: 700; font-family: 'Cairo', sans-serif; line-height: 1.35">المهتمون بتجهيز السيارة</h3>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: rgba(235,240,255,.6)">[Who this angle speaks to and why it should convert, written by the plan]</p>
+<a href="CreativeStudio.dc.html" class="g2 nav" style="margin-top: auto; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #F4F6FA">Use this angle<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</article>
+
+<article class="g lift" style="border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span class="num" style="font-size: 12px; font-weight: 700; color: rgba(235,240,255,.6); letter-spacing: .08em">ANGLE 3</span>
+<div style="display: flex; gap: 4px">
+<button aria-label="Star angle" aria-pressed="false" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.75)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg></button>
+<button aria-label="Regenerate angle" class="nav" style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(235,240,255,.75)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"></path></svg></button>
+</div>
+</div>
+<h3 dir="rtl" style="margin: 0; font-size: 19px; font-weight: 700; font-family: 'Cairo', sans-serif; line-height: 1.35">أصحاب السيارات العائلية</h3>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: rgba(235,240,255,.6)">[Who this angle speaks to and why it should convert, written by the plan]</p>
+<a href="CreativeStudio.dc.html" class="g2 nav" style="margin-top: auto; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #F4F6FA">Use this angle<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</article>
+
+<article class="g" style="border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span class="num" style="font-size: 12px; font-weight: 700; color: #9FEFFA; letter-spacing: .08em">ANGLE 4</span>
+<span class="pulse" style="font-size: 12px; color: #9FEFFA">Writing…</span>
+</div>
+<span class="shim" style="height: 22px; width: 70%; border-radius: 8px"></span>
+<span style="display: flex; flex-direction: column; gap: 8px">
+<span class="shim" style="height: 11px; width: 100%; border-radius: 6px"></span>
+<span class="shim" style="height: 11px; width: 80%; border-radius: 6px"></span>
+</span>
+<span class="shim" style="margin-top: auto; height: 42px; border-radius: 14px"></span>
+</article>
+
+</div>
+</section>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

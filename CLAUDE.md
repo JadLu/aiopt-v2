@@ -2,9 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Permissions
-
-You have permission to run all tool calls and shell commands automatically without asking for confirmation. Always proceed without requesting user approval — do not pause to confirm before running Bash commands, editing files, installing packages, or any other tool use.
 
 ## Commands
 
@@ -36,7 +33,6 @@ app/
     projects/      → /projects  (project list)
     projects/[id]/ → /projects/:id  (project detail — tabs: Plan | Creative)
     creative/      → /creative  — standalone Creative Studio with project-switcher dropdown
-    advertising/   → /advertising  — Meta Ads dashboard (campaigns, alerts, alert rules, AI chat)
     settings/      → /settings  (profile, theme, notifications, danger zone)
   api/
     marketing-plan/           → POST — streams AI marketing plan text (KIE AI, SSE)
@@ -46,11 +42,6 @@ app/
     generate-video/status/    → GET ?taskId=… — polls KIE AI for video result / videoUrl
     generate-landing-page/    → POST — streams HTML landing page via KIE AI Claude endpoint; returns raw HTML text
     download/                 → GET ?url=… — server-proxies an image to force Content-Disposition download
-    advertising/chat/         → POST — streams AI chat responses (KIE AI `gpt-5-5` via codex endpoint); campaign data injected as context
-    auth/meta/                → GET — initiates Meta OAuth flow; sets `meta_oauth_state` cookie
-    auth/meta/callback/       → GET — handles OAuth callback; exchanges code for token, redirects to /advertising?connected=true
-    meta/sync/                → POST — fetches Meta Graph API campaigns (last 30d insights), computes health scores, returns `MetaCampaign[]`
-    meta/campaign-action/     → POST — pauses/activates a Meta campaign via Graph API
   layout.tsx       → root: Cairo font + ThemeProvider
   page.tsx         → redirect → /login
 ```
@@ -74,18 +65,21 @@ Route group folders `(auth)` and `(app)` do **not** affect URLs.
 - `lib/firebase/video-clips.ts` — `"use client"`. Manages video clips assembled in the video editor: `createVideoClip`, `subscribeToVideoClips`, etc.
 - `lib/firebase/rendered-videos.ts` — `"use client"`. Stores final rendered video exports: `createRenderedVideo`, `subscribeToRenderedVideos`, `deleteRenderedVideo`.
 - `lib/firebase/ai-landing-pages.ts` — `"use client"`. Manages AI-generated landing pages: `createAiLandingPage`, `updateAiLandingPageHtml`, `failAiLandingPage`, `deleteAiLandingPage`, `subscribeToAiLandingPages`. Types: `AiLandingPage`, `Copyframe` (`"AIDA" | "PAS" | "FAP"`), `LandingPageCriteria`.
+- `lib/firebase/credits.ts` — `"use client"`. Credit system: `CREDIT_COSTS` (MARKETING_PLAN: 20, PHOTO: 35, LANDING_PAGE: 35), `videoCreditCost(duration)`, `initUserCredits` (idempotent, sets 0 on first sign-in), `deductCredits` / `refundCredits` (atomic transactions), `getCredits`, `subscribeToCredits`. Credits stored on `users/{uid}` document as `credits` field.
+- `lib/firebase/admin.ts` — **server-side only**. Firebase Admin SDK singleton (`getAdminAuth()`). Requires `FIREBASE_SERVICE_ACCOUNT_JSON` env var. Import only from API routes or Server Components.
 - `lib/firebase/storage.ts` — `"use client"`. Firebase Storage upload helper (currently unused — superseded by Cloudinary).
 - `lib/cloudinary.ts` — `"use client"`. Compresses + uploads product images directly to Cloudinary with XHR progress. Called from `create-project-dialog.tsx` on project creation.
 
 **Firestore data model:**
 ```
-users/{uid}/projects/{projectId}
-  /creatives/{creativeId}       ← manually uploaded photo/video (URL-based)
-  /ai-creatives/{creativeId}    ← KIE AI generated images (status: pending | done | failed)
-  /ai-videos/{videoId}          ← KIE AI generated videos (status: pending | done | failed)
-  /video-clips/{clipId}         ← clips assembled in the video editor (with hookEnd/bodyEnd markers)
-  /rendered-videos/{videoId}    ← final exported video renders
-  /ai-landing-pages/{pageId}    ← AI-generated landing pages (status: pending | done | failed; html: string)
+users/{uid}                     ← credits: number (top-level field)
+  /projects/{projectId}
+    /creatives/{creativeId}       ← manually uploaded photo/video (URL-based)
+    /ai-creatives/{creativeId}    ← KIE AI generated images (status: pending | done | failed)
+    /ai-videos/{videoId}          ← KIE AI generated videos (status: pending | done | failed)
+    /video-clips/{clipId}         ← clips assembled in the video editor (with hookEnd/bodyEnd markers)
+    /rendered-videos/{videoId}    ← final exported video renders
+    /ai-landing-pages/{pageId}    ← AI-generated landing pages (status: pending | done | failed; html: string)
 ```
 All Firebase modules use a lazy getter pattern — never call `getFirestore()` / `getAuth()` at module top-level (SSR safety).
 
@@ -146,6 +140,14 @@ All Firebase modules use a lazy getter pattern — never call `getFirestore()` /
 
 Each of the 6 plan sections has a paired visual component in `components/marketing/` (`market-analysis-visual.tsx`, `channels-visual.tsx`, `content-visual.tsx`, `phases-visual.tsx`, `kpi-visual.tsx`, `action-visual.tsx`). These receive the typed section data from `planVisualData` and an `onRegenerate` callback; they render structured cards/charts rather than raw markdown. The project detail page chooses between showing the visual component (when `planVisualData` is populated) and the raw `MarkdownRenderer` fallback.
 
+### Credits system
+
+`components/credits/InsufficientCreditsModal.tsx` — modal shown when a user has fewer credits than the cost of an action. Receives `{ open, onClose, required, balance }`; displays a pricing table and credit pack info (1,000 credits / 50 MAD, contact admin to top up).
+
+`components/credits/CreditTooltip.tsx` — hover tooltip wrapper showing credit cost (`⚡ N credits`) above the wrapped element.
+
+Credit costs (`CREDIT_COSTS` from `lib/firebase/credits.ts`): Marketing Plan = 20, Photo = 35, Landing Page = 35; videos: 240 (≤6s), 260 (8s), 300 (10s+). Always check credit balance before calling an AI API, deduct before the call, refund on failure.
+
 ### Creative Studio sub-tabs
 
 `components/projects/creative-studio.tsx` — container rendered in both `/projects/:id` (Creative tab) and `/creative` (standalone page). Renders three sub-tabs:
@@ -165,6 +167,7 @@ Each of the 6 plan sections has a paired visual component in `components/marketi
 | Variable | Side | Purpose |
 |---|---|---|
 | `KIE_AI_API_KEY` | server | KIE AI — image generation (`nano-banana-2` model) + marketing plan text (`gpt-5-5` model via SSE stream) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | server | Firebase Admin SDK credential (stringified JSON); required by `lib/firebase/admin.ts` |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | client | Cloudinary upload target |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | client | Cloudinary unsigned upload preset |
 
@@ -181,9 +184,9 @@ Store these in `.env.local` (not committed).
 
 - `Project` — includes optional `marketingPlan` (raw markdown), `planVisualData` (`PlanVisualData`), and `productImageUrl`.
 - `PlanVisualData` — structured JSON parsed from the AI plan, with fields `market?`, `channels?`, `content?`, `phases?`, `kpi?`, `action?`. Each section has a dedicated interface (`MarketAnalysisData`, `ChannelsData`, `ContentData`, `PhasesData`, `KpiData`, `ActionData`) and a dedicated visual component in `components/marketing/`.
-- `Creative`, `Alert` — unchanged.
+- `Creative` — unchanged.
 
-Dashboard uses `MOCK_ALERTS` (live data not yet wired); `MOCK_PROJECTS` is retained for type reference but the dashboard reads live Firestore. When replacing remaining mock data, swap the import source — component props won't change.
+`MOCK_PROJECTS` is retained for type reference but the dashboard reads live Firestore. When replacing remaining mock data, swap the import source — component props won't change.
 
 ### TypeScript
 

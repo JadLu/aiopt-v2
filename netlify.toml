@@ -1,0 +1,16 @@
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+# The Cloudinary cloud name is public (it is in every image URL). Netlify inlines NEXT_PUBLIC_* values into the build output and would otherwise fail the secrets scan.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME"
+
+# Set function timeout to max (26s for free, 30s for pro)
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    "x-function-max-age" = "30"

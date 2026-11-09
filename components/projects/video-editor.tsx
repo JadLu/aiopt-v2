@@ -7,9 +7,9 @@ import {
   Upload, Volume2, VolumeX,
 } from "lucide-react";
 import { uploadRenderedVideo } from "@/lib/cloudinary";
+import { downloadViaProxy } from "@/lib/auth-fetch";
 import {
-  createRenderedVideo, deleteRenderedVideo,
-  subscribeToRenderedVideos, type RenderedVideo,
+  createRenderedVideo, deleteRenderedVideo, type RenderedVideo,
 } from "@/lib/firebase/rendered-videos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -301,14 +301,11 @@ export function RenderedVideoCard({
   const [deleting, setDeleting] = useState(false);
 
   const hasVideo = !!video.videoUrl && !err;
+  const clips = `${video.clipCount} clip${video.clipCount !== 1 ? "s" : ""}`;
 
   function handleDownload() {
     setMenu(false);
-    const fname = `render-${video.id}.mp4`;
-    const a = document.createElement("a");
-    a.href     = `/api/download?url=${encodeURIComponent(video.videoUrl)}&filename=${encodeURIComponent(fname)}`;
-    a.download = fname;
-    a.click();
+    downloadViaProxy(video.videoUrl, `render-${video.id}.mp4`).catch(() => { /* no-op */ });
   }
 
   async function handleDelete() {
@@ -317,72 +314,72 @@ export function RenderedVideoCard({
     catch { setDeleting(false); }
   }
 
+  // Escape closes the lightbox.
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
+  // An export whose video no longer loads is left out of the gallery.
+  if (err) return null;
+
   return (
     <>
-      <div className="card" style={{ padding: 0, overflow: "hidden", opacity: deleting ? 0.45 : 1, transition: "opacity 0.2s" }}>
-        <div style={{ height: 200, background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", cursor: hasVideo ? "pointer" : "default" }}
-          onClick={() => { if (hasVideo) setLightbox(true); }}>
-          {hasVideo ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
-            <video src={video.videoUrl} muted loop playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              onMouseEnter={e => e.currentTarget.play()}
-              onMouseLeave={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
-              onError={() => setErr(true)} />
-          ) : (
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Video unavailable</span>
-          )}
+      <div className={`gen-tile lift${deleting ? " deleting" : ""}`} style={{ aspectRatio: "9 / 16" }}>
+        {hasVideo ? (
+           
+          <video src={video.videoUrl} muted loop playsInline
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            onMouseEnter={e => e.currentTarget.play()}
+            onMouseLeave={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+            onError={() => setErr(true)} />
+        ) : (
+          <div className="gen-state"><span>Video unavailable</span></div>
+        )}
 
-          {/* Badges */}
-          <div style={{ position: "absolute", bottom: 8, left: 8, display: "flex", gap: 5 }}>
-            <span style={{ background: "rgba(0,0,0,0.55)", borderRadius: 5, padding: "2px 7px", fontSize: 10, color: "#fff" }}>Rendered</span>
-            <span style={{ background: "rgba(0,0,0,0.55)", borderRadius: 5, padding: "2px 7px", fontSize: 10, color: "#fff" }}>
-              {fmt(video.durationSec)} · {video.clipCount} clip{video.clipCount !== 1 ? "s" : ""}
-            </span>
-          </div>
+        {hasVideo && (
+          <button type="button" className="gen-open" aria-label={`Play rendered video (${clips})`} onClick={() => setLightbox(true)} />
+        )}
+        {hasVideo && <span className="gen-play" aria-hidden><Play size={20} fill="currentColor" style={{ marginLeft: 3 }} /></span>}
 
-          {/* Menu */}
-          <div style={{ position: "absolute", top: 6, right: 6 }} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setMenu(o => !o)} style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
-              <MoreVertical size={14} />
-            </button>
-            {menu && (
-              <>
-                <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenu(false)} />
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden", minWidth: 130, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
-                  {hasVideo && (
-                    <button onClick={handleDownload} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--text-primary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                      <Download size={13} color="var(--text-secondary)" /> Save
-                    </button>
-                  )}
-                  <button onClick={handleDelete} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--danger)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                    <Trash2 size={13} /> Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <span className="gen-badge">Rendered</span>
 
-        <div style={{ padding: "10px 12px" }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 4px" }}>
-            {video.clipCount} clip{video.clipCount !== 1 ? "s" : ""} composed
-          </p>
-          <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0 }}>{video.createdAt}</p>
+        <button type="button" className="gen-menu-btn" aria-label="Video options" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(o => !o)}>
+          <MoreVertical size={16} aria-hidden />
+        </button>
+        {menu && (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenu(false)} />
+            <div className="glass gen-menu" role="menu">
+              {hasVideo && (
+                <button type="button" role="menuitem" className="menu-item" onClick={handleDownload}>
+                  <Download size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Save</span>
+                </button>
+              )}
+              <button type="button" role="menuitem" className="menu-item danger" onClick={handleDelete}>
+                <Trash2 size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Delete</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        <div className="gen-caption">
+          <div className="gen-caption-title">{clips} composed</div>
+          <div className="gen-caption-meta">{fmt(video.durationSec)} · {video.createdAt}</div>
         </div>
       </div>
 
       {lightbox && hasVideo && (
-        <div className="dialog-overlay" style={{ zIndex: 100 }} onClick={() => setLightbox(false)}>
-          <div style={{ maxWidth: "min(90vw, 900px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }} onClick={e => e.stopPropagation()}>
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video src={video.videoUrl} controls autoPlay style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }} />
+        <div className="dialog-overlay" style={{ zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Rendered video" onClick={() => setLightbox(false)}>
+          <div style={{ maxWidth: "min(90vw, 900px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }} onClick={e => e.stopPropagation()}>
+            { }
+            <video src={video.videoUrl} controls autoPlay style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: 24, boxShadow: "var(--card-shadow)" }} />
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={handleDownload} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--accent-primary)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                <Download size={13} /> Download
-              </button>
-              <button onClick={() => setLightbox(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer", fontFamily: "inherit" }}>
-                <X size={13} /> Close
+              <button type="button" className="btn-liquid" onClick={handleDownload}><Download size={15} aria-hidden /> Download</button>
+              <button type="button" className="btn-secondary glass-inner" style={{ width: "auto", minHeight: 44, padding: "0 22px", display: "inline-flex", alignItems: "center", gap: 8 }} onClick={() => setLightbox(false)}>
+                <X size={15} aria-hidden /> Close
               </button>
             </div>
           </div>
@@ -403,7 +400,6 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
   const [pxPerSec,       setPxPerSec]       = useState<number>(80);
   const [selectedId,     setSelectedId]     = useState<string | null>(null);
   const [exportState,    setExportState]    = useState<ExportState>(INITIAL_EXPORT);
-  const [renderedVideos, setRenderedVideos] = useState<RenderedVideo[]>([]);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const canvasRef        = useRef<HTMLCanvasElement>(null);
@@ -438,7 +434,6 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
   const timelineW  = Math.max(totalDuration * pxPerSec + 400, 900);
 
   // ── Subscriptions / cleanup ───────────────────────────────────────────────────
-  useEffect(() => subscribeToRenderedVideos(uid, projectId, setRenderedVideos), [uid, projectId]);
 
   useEffect(() => {
     return () => {
@@ -972,21 +967,21 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
   const zoomIdx     = (ZOOM_STEPS as ReadonlyArray<number>).indexOf(pxPerSec);
 
   return (
-    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 14, overflow: "hidden" }}>
+    <div className="editor-shell">
 
       {/* ── Header ────────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid var(--border-default)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid var(--hairline)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "color-mix(in srgb, var(--accent-secondary) 12%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <VideoIcon size={15} color="var(--accent-secondary)" />
-          </div>
+          <span className="glass-inner icon-chip" style={{ width: 40, height: 40, borderRadius: 13 }} aria-hidden>
+            <VideoIcon size={17} strokeWidth={1.8} />
+          </span>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Video Editor</div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Arrange clips · preview · export</div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Video editor</h3>
+            <div style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>Arrange clips · preview · export</div>
           </div>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600, background: "color-mix(in srgb, var(--accent-primary) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent)", color: "var(--accent-primary)", cursor: "pointer", fontFamily: "inherit" }}>
-          <Plus size={13} /> Add Media
+        <label className="chip" style={{ cursor: "pointer" }}>
+          <Plus size={14} aria-hidden /> Add media
           <input type="file" multiple accept="video/*,audio/*,audio/mpeg,audio/wav,audio/aac" onChange={handleFiles} style={{ display: "none" }} />
         </label>
       </div>
@@ -995,14 +990,14 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
       <div style={{ display: "flex", height: 320 }}>
 
         {/* Media Panel */}
-        <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border-default)", overflowY: "auto", padding: "10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--hairline)", overflowY: "auto", padding: "10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
             Media ({mediaItems.length})
           </div>
           {mediaItems.length === 0 ? (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)", textAlign: "center", padding: "20px 12px" }}>
               <Upload size={22} strokeWidth={1.5} />
-              <div style={{ fontSize: 11 }}>Click "Add Media" to import video or audio files</div>
+              <div style={{ fontSize: 11 }}>Use Add media to import video or audio files</div>
             </div>
           ) : (
             mediaItems.map(item => (
@@ -1035,18 +1030,19 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
       </div>
 
       {/* ── Transport bar ──────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", borderTop: "1px solid var(--border-default)", borderBottom: "1px solid var(--border-default)", background: "var(--bg-subtle)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)", background: "var(--glass-inner)" }}>
         <button
-          onClick={() => seekToTime(0)}
-          style={{ width: 28, height: 28, borderRadius: 7, background: "none", border: "1px solid var(--border-default)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
-          <SkipBack size={13} />
+          type="button" className="icon-btn-sm" aria-label="Back to start"
+          onClick={() => seekToTime(0)}>
+          <SkipBack size={15} aria-hidden />
         </button>
 
         <button
+          type="button" className="btn-liquid" aria-label={isPlaying ? "Pause" : "Play"}
           onClick={() => isPlaying ? pause() : play()}
           disabled={clips.length === 0}
-          style={{ width: 34, height: 34, borderRadius: 8, border: "none", cursor: clips.length === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-primary)", color: "#fff", opacity: clips.length === 0 ? 0.5 : 1 }}>
-          {isPlaying ? <Pause size={15} /> : <Play size={15} />}
+          style={{ width: 40, minHeight: 40, height: 40, padding: 0, borderRadius: "50%" }}>
+          {isPlaying ? <Pause size={16} aria-hidden /> : <Play size={16} style={{ marginLeft: 2 }} aria-hidden />}
         </button>
 
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums", minWidth: 110 }}>
@@ -1055,35 +1051,33 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
 
         {selectedId && (
           <button
-            onClick={deleteSelected}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, background: "rgba(229,118,118,0.08)", border: "1px solid rgba(229,118,118,0.25)", color: "var(--danger)", cursor: "pointer", fontFamily: "inherit" }}>
-            <Trash2 size={11} /> Delete clip
+            type="button" className="chip studio-mini" style={{ color: "var(--danger)" }}
+            onClick={deleteSelected}>
+            <Trash2 size={13} aria-hidden /> Delete clip
           </button>
         )}
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Zoom</span>
-          <button onClick={zoomOut} disabled={zoomIdx <= 0}
-            style={{ width: 26, height: 26, borderRadius: 6, background: "none", border: "1px solid var(--border-default)", cursor: zoomIdx <= 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", opacity: zoomIdx <= 0 ? 0.4 : 1 }}>
-            <ZoomOut size={12} />
+          <span className="field-label">Zoom</span>
+          <button type="button" className="icon-btn-sm" aria-label="Zoom out" onClick={zoomOut} disabled={zoomIdx <= 0}>
+            <ZoomOut size={15} aria-hidden />
           </button>
-          <button onClick={zoomIn} disabled={zoomIdx >= ZOOM_STEPS.length - 1}
-            style={{ width: 26, height: 26, borderRadius: 6, background: "none", border: "1px solid var(--border-default)", cursor: zoomIdx >= ZOOM_STEPS.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", opacity: zoomIdx >= ZOOM_STEPS.length - 1 ? 0.4 : 1 }}>
-            <ZoomIn size={12} />
+          <button type="button" className="icon-btn-sm" aria-label="Zoom in" onClick={zoomIn} disabled={zoomIdx >= ZOOM_STEPS.length - 1}>
+            <ZoomIn size={15} aria-hidden />
           </button>
         </div>
       </div>
 
       {/* ── Timeline ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", background: "var(--bg-base)" }}>
+      <div style={{ display: "flex", background: "var(--well-bg)" }}>
 
         {/* Track labels column */}
-        <div style={{ width: 54, flexShrink: 0, borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column" }}>
+        <div style={{ width: 54, flexShrink: 0, borderRight: "1px solid var(--hairline)", display: "flex", flexDirection: "column" }}>
           <div style={{ height: 22 }} /> {/* ruler space */}
-          <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", borderTop: "1px solid var(--border-default)" }}>
+          <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", borderTop: "1px solid var(--hairline)" }}>
             <span style={{ fontSize: 8, fontWeight: 800, color: "var(--accent-primary)", letterSpacing: "0.1em", textTransform: "uppercase", writingMode: "vertical-rl", transform: "rotate(180deg)" }}>VIDEO</span>
           </div>
-          <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "center", borderTop: "1px solid var(--border-default)" }}>
+          <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "center", borderTop: "1px solid var(--hairline)" }}>
             <span style={{ fontSize: 8, fontWeight: 800, color: "var(--accent-secondary)", letterSpacing: "0.1em", textTransform: "uppercase", writingMode: "vertical-rl", transform: "rotate(180deg)" }}>AUDIO</span>
           </div>
         </div>
@@ -1097,13 +1091,13 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
           <div style={{ width: timelineW, position: "relative" }}>
 
             {/* Ruler */}
-            <div style={{ height: 22, position: "relative", background: "var(--bg-subtle)", borderBottom: "1px solid var(--border-default)" }}>
+            <div style={{ height: 22, position: "relative", background: "var(--bg-subtle)", borderBottom: "1px solid var(--hairline)" }}>
               {rulerTicks}
             </div>
 
             {/* Video track */}
             <div
-              style={{ height: 68, position: "relative", background: "color-mix(in srgb, var(--accent-primary) 4%, var(--bg-elevated))", borderBottom: "1px solid var(--border-default)" }}
+              style={{ height: 68, position: "relative", background: "color-mix(in srgb, var(--accent-primary) 4%, var(--bg-elevated))", borderBottom: "1px solid var(--hairline)" }}
               onClick={e => { if ((e.target as HTMLElement) === e.currentTarget) setSelectedId(null); }}
             >
               {videoClips.map(clip => (
@@ -1160,27 +1154,26 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
       </div>
 
       {/* ── Export bar ─────────────────────────────────────────────────────────── */}
-      <div style={{ padding: "12px 18px", borderTop: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      <div style={{ padding: "12px 18px", borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <button
-          className="btn-primary"
+          type="button" className="btn-liquid"
           onClick={startExport}
           disabled={clips.length === 0 || isExporting || exportState.phase === "done"}
-          style={{ padding: "9px 20px", fontSize: 13, opacity: (clips.length === 0 || isExporting) ? 0.6 : 1 }}
         >
           {exportState.phase === "recording"
-            ? <><div style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 1s linear infinite" }} /> Recording {exportState.progress}%</>
+            ? <><span className="spinner" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} aria-hidden /> Recording {exportState.progress}%</>
             : exportState.phase === "uploading"
-            ? <><Upload size={13} /> Uploading {exportState.progress}%</>
+            ? <><Upload size={15} aria-hidden /> Uploading {exportState.progress}%</>
             : exportState.phase === "done"
-            ? <><Check size={13} /> Saved!</>
-            : <><Upload size={13} /> Export &amp; Save</>
+            ? <><Check size={15} aria-hidden /> Saved!</>
+            : <><Upload size={15} aria-hidden /> Export &amp; save</>
           }
         </button>
 
         {/* Progress bar */}
         {isExporting && (
           <div style={{ flex: 1, minWidth: 120, maxWidth: 240 }}>
-            <div style={{ height: 4, background: "var(--border-default)", borderRadius: 3, overflow: "hidden" }}>
+            <div role="progressbar" aria-valuenow={exportState.progress} aria-valuemin={0} aria-valuemax={100} style={{ height: 6, background: "var(--glass-inner)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${exportState.progress}%`, background: "var(--accent-primary)", borderRadius: 3, transition: "width 0.3s" }} />
             </div>
           </div>
@@ -1188,7 +1181,7 @@ export function VideoEditor({ uid, projectId }: { uid: string; projectId: string
 
         {exportState.phase === "error" && exportState.error && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--danger)" }}>
-            <AlertCircle size={13} /> {exportState.error}
+            <AlertCircle size={14} aria-hidden /> {exportState.error}
           </div>
         )}
 

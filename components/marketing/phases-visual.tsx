@@ -40,7 +40,7 @@ export function PhasesVisual({ data, onRegenerate }: PhasesVisualProps) {
                 width: 28, height: 28, borderRadius: "50%",
                 background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 800, color: "#fff", flexShrink: 0,
+                fontSize: 12, fontWeight: 800, color: "var(--liquid-fg)", flexShrink: 0,
               }}>
                 {i + 1}
               </div>

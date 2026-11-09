@@ -1,5 +1,16 @@
 import { NextRequest } from "next/server";
+import { UNTRUSTED_RULE, untrusted } from "@/lib/prompt-safety";
 import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
+import { adminDeductCredits, adminRefundCredits } from "@/lib/firebase/admin-credits";
+import { notify } from "@/lib/notify";
+import { CREDIT_COSTS } from "@/lib/credit-costs";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { generateLandingPageSchema, parseBody } from "@/lib/validation";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const COST = CREDIT_COSTS.LANDING_PAGE;
 
 const KIE_CLAUDE_URL = "https://api.kie.ai/claude/v1/messages";
 
@@ -202,28 +213,9 @@ High-contrast gradient. "Ready to [desired outcome]?" headline. Value propositio
 **FOOTER**: Simple footer.`
 };
 
-interface RequestBody {
-  project: {
-    name: string;
-    description?: string;
-    country: string;
-    emoji: string;
-    productImageUrl?: string;
-    photoUrls?: string[];
-    gifUrl?: string;
-  };
-  copyframe: Copyframe;
-  language?: string;
-  criteria: {
-    segment?: string;
-    pillar?: string;
-    hook?: string;
-    tone?: string;
-  };
-}
-
 export async function POST(request: NextRequest) {
-  try { await requireAuth(request); } catch (e) {
+  let uid: string;
+  try { uid = await requireAuth(request); } catch (e) {
     if (e instanceof AuthError) return unauthorizedResponse();
     throw e;
   }
@@ -233,17 +225,12 @@ export async function POST(request: NextRequest) {
     return new Response("KIE_AI_API_KEY is not configured", { status: 500 });
   }
 
-  let body: RequestBody;
-  try {
-    body = await request.json() as RequestBody;
-  } catch {
-    return new Response("Invalid request body", { status: 400 });
-  }
+  const limited = await enforceRateLimit(uid, "generate");
+  if (limited) return limited;
 
-  const { project, copyframe, criteria, language } = body;
-  if (!project?.name || !project?.country || !copyframe) {
-    return new Response("Missing required fields", { status: 400 });
-  }
+  const parsedBody = await parseBody(request, generateLandingPageSchema);
+  if (!parsedBody.ok) return parsedBody.response;
+  const { project, copyframe, criteria, language } = parsedBody.data;
 
   const sectionInstructions = COPYFRAME_SECTIONS[copyframe] ?? COPYFRAME_SECTIONS.AIDA;
 
@@ -256,8 +243,9 @@ export async function POST(request: NextRequest) {
   const userPrompt = `Generate a complete, production-quality landing page for:
 
 ## Product Details
-- Name: ${project.emoji} ${project.name}
-- Description: ${project.description || "Premium product for the market"}
+${UNTRUSTED_RULE}
+- Name: ${project.emoji} ${untrusted("name", project.name, 200)}
+- Description: ${project.description ? untrusted("description", project.description) : "Premium product for the market"}
 - Market: ${project.country}
 ${project.productImageUrl ? `- Product Image URL: ${project.productImageUrl}` : "- No product image available"}
 ${project.photoUrls && project.photoUrls.length > 0
@@ -303,6 +291,27 @@ ${sectionInstructions}
 
 Output the HTML document now. Nothing else.`;
 
+  const deduction = await adminDeductCredits(uid, COST);
+  if (!deduction.success) {
+    return Response.json(
+      { error: "insufficient_credits", required: COST, balance: deduction.balance },
+      { status: 402 }
+    );
+  }
+
+  // Refund at most once, whatever path fails.
+  let refunded = false;
+  const refundOnce = async () => {
+    if (refunded) return;
+    refunded = true;
+    await adminRefundCredits(uid, COST).catch(() => console.error("[generate-landing-page] refund failed"));
+    await notify(uid, {
+      type: "generation_failed",
+      title: "Landing page couldn’t be generated",
+      body: `The landing page failed. Your ${COST} credits were refunded.`,
+    });
+  };
+
   let upstream: Response;
   try {
     upstream = await fetch(KIE_CLAUDE_URL, {
@@ -320,19 +329,19 @@ Output the HTML document now. Nothing else.`;
         messages: [{ role: "user", content: userPrompt }],
       }),
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return new Response(`Failed to reach KIE API: ${msg}`, { status: 502 });
+  } catch {
+    console.error("[generate-landing-page] upstream request failed");
+    await refundOnce();
+    return new Response("Could not reach the AI service. You were not charged.", { status: 502 });
   }
 
-  if (!upstream.ok) {
-    const errText = await upstream.text();
-    return new Response(`KIE API error (${upstream.status}): ${errText}`, { status: upstream.status });
+  if (!upstream.ok || !upstream.body) {
+    console.error(`[generate-landing-page] upstream HTTP ${upstream.status}`);
+    await upstream.body?.cancel().catch(() => { /* ignore */ });
+    await refundOnce();
+    return new Response("The AI service returned an error. You were not charged.", { status: 502 });
   }
-
-  if (!upstream.body) {
-    return new Response("Empty response from KIE API", { status: 502 });
-  }
+  console.log(`[generate-landing-page] upstream HTTP ${upstream.status}`);
 
   const encoder = new TextEncoder();
   const upstreamReader = upstream.body.getReader();
@@ -342,9 +351,11 @@ Output the HTML document now. Nothing else.`;
       const decoder = new TextDecoder();
       let buffer = "";
       let currentEvent = "";
+      let emitted = false;
+      let failed = false;
 
       try {
-        while (true) {
+        outer: while (true) {
           const { done, value } = await upstreamReader.read();
           if (done) break;
 
@@ -357,10 +368,7 @@ Output the HTML document now. Nothing else.`;
               currentEvent = line.slice(6).trim();
             } else if (line.startsWith("data:")) {
               const dataStr = line.slice(5).trim();
-              if (dataStr === "[DONE]") {
-                controller.close();
-                return;
-              }
+              if (dataStr === "[DONE]") break outer;
               // Standard Anthropic SSE: content_block_delta with text_delta
               if (currentEvent === "content_block_delta") {
                 try {
@@ -369,6 +377,7 @@ Output the HTML document now. Nothing else.`;
                   };
                   if (parsed.delta?.type === "text_delta" && parsed.delta.text) {
                     controller.enqueue(encoder.encode(parsed.delta.text));
+                    emitted = true;
                   }
                 } catch {
                   // skip malformed JSON
@@ -379,11 +388,18 @@ Output the HTML document now. Nothing else.`;
             }
           }
         }
-      } catch (err) {
-        controller.error(err);
+      } catch {
+        failed = true;
+        console.error("[generate-landing-page] stream error");
+        // Nothing usable was produced → charge nothing.
+        if (!emitted) await refundOnce();
+        try { controller.error(new Error("Generation interrupted")); } catch { /* closed */ }
       } finally {
         upstreamReader.releaseLock();
-        try { controller.close(); } catch { /* already closed */ }
+        if (!failed) {
+          if (!emitted) await refundOnce();
+          try { controller.close(); } catch { /* already closed */ }
+        }
       }
     },
   });

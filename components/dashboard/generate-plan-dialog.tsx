@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, CheckCircle2, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { updateProject } from "@/lib/firebase/projects";
+import { subscribeToProject } from "@/lib/firebase/projects";
+import type { Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { authFetch } from "@/lib/auth-fetch";
-import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
+import { startMarketingPlan } from "@/lib/marketing-plan-client";
+import { CREDIT_COSTS } from "@/lib/credit-costs";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
-import type { Project, PlanVisualData } from "@/lib/mock-data";
+import type { Project } from "@/lib/mock-data";
 
 interface GeneratePlanDialogProps {
   open: boolean;
@@ -19,100 +20,83 @@ interface GeneratePlanDialogProps {
 
 type GenStatus = "generating" | "complete" | "error";
 
+const PROGRESS_MESSAGES = [
+  "Analyzing your target market...",
+  "Mapping the channel mix...",
+  "Shaping the creative strategy...",
+  "Planning campaign phases...",
+  "Setting KPI benchmarks...",
+  "Drafting the 30-day action plan...",
+];
+
 export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlanDialogProps) {
   const router = useRouter();
   const { credits } = useAuth();
   const [status, setStatus] = useState<GenStatus>("generating");
-  const [planText, setPlanText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [creditModalOpen, setCreditModalOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [creditInfo, setCreditInfo] = useState<{ required: number; balance: number }>({ required: CREDIT_COSTS.MARKETING_PLAN, balance: 0 });
+  const [progressIdx, setProgressIdx] = useState(0);
   const started = useRef(false);
+  const unsubRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setPlanText("");
       setStatus("generating");
       setErrorMsg("");
+      setProgressIdx(0);
       started.current = false;
+      unsubRef.current?.();
+      unsubRef.current = null;
       return;
     }
     if (started.current) return;
     started.current = true;
-    checkAndGenerate();
+    generate();
+    return () => {
+      unsubRef.current?.();
+      unsubRef.current = null;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [planText]);
-
-  async function checkAndGenerate() {
-    const result = await deductCredits(uid, CREDIT_COSTS.MARKETING_PLAN);
-    if (!result.success) {
-      setCreditModalOpen(true);
-      setStatus("error");
-      setErrorMsg("Insufficient credits.");
-      return;
-    }
-    await generate();
-  }
+    if (status !== "generating") return;
+    const interval = setInterval(() => {
+      setProgressIdx((i) => (i + 1) % PROGRESS_MESSAGES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [status]);
 
   async function generate() {
     try {
-      const res = await authFetch("/api/marketing-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project }),
+      const result = await startMarketingPlan(project);
+
+      if (!result.ok && result.kind === "credits") {
+        setCreditInfo({ required: result.required, balance: result.balance });
+        setCreditModalOpen(true);
+        setStatus("error");
+        setErrorMsg("Insufficient credits.");
+        return;
+      }
+
+      if (!result.ok) throw new Error(result.message);
+
+      // Generation now runs server-side; watch the project doc for completion.
+      unsubRef.current = subscribeToProject(uid, project.id, (p) => {
+        if (!p) return;
+        if (p.marketingPlanStatus === "failed") {
+          setErrorMsg(p.marketingPlanError || "Something went wrong");
+          setStatus("error");
+          unsubRef.current?.();
+          unsubRef.current = null;
+        } else if (p.marketingPlanStatus === "done") {
+          setStatus("complete");
+          unsubRef.current?.();
+          unsubRef.current = null;
+        }
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed (${res.status})`);
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        full += chunk;
-        // Filter out heartbeat comments for display (but keep in full for parsing later)
-        const displayText = full.replace(/: heartbeat\n/g, "");
-        setPlanText(displayText);
-      }
-
-      function parseBlock(slug: string) {
-        // Remove heartbeat comments before parsing blocks
-        const cleaned = full.replace(/: heartbeat\n/g, "");
-        const re = new RegExp("```json:" + slug + "\\n([\\s\\S]*?)```");
-        const m = cleaned.match(re);
-        if (!m) return null;
-        try { return JSON.parse(m[1]); } catch { return null; }
-      }
-      const planVisualData: PlanVisualData = {
-        market:   parseBlock("market-analysis"),
-        channels: parseBlock("channels"),
-        content:  parseBlock("content"),
-        phases:   parseBlock("phases"),
-        kpi:      parseBlock("kpi"),
-        action:   parseBlock("action"),
-      };
-      // Remove undefined fields — Firestore doesn't support undefined values
-      const cleanedData = Object.fromEntries(
-        Object.entries(planVisualData).filter(([, v]) => v !== null)
-      );
-      // Remove heartbeat comments from saved plan text
-      const cleanedPlan = full.replace(/: heartbeat\n/g, "");
-      await updateProject(uid, project.id, { marketingPlan: cleanedPlan, planVisualData: cleanedData, status: "active" });
-      setStatus("complete");
     } catch (err) {
-      await refundCredits(uid, CREDIT_COSTS.MARKETING_PLAN);
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
       setStatus("error");
     }
@@ -123,8 +107,8 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
     <InsufficientCreditsModal
       open={creditModalOpen}
       onClose={() => { setCreditModalOpen(false); onClose(); }}
-      required={CREDIT_COSTS.MARKETING_PLAN}
-      balance={credits ?? 0}
+      required={creditInfo.required}
+      balance={credits ?? creditInfo.balance}
     />
   );
 
@@ -157,8 +141,8 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
               {status === "error"
                 ? <AlertCircle size={17} color="var(--danger)" />
                 : status === "complete"
-                  ? <CheckCircle2 size={17} color="#fff" />
-                  : <Sparkles size={17} color="#fff" />}
+                  ? <CheckCircle2 size={17} color="var(--on-accent)" />
+                  : <Sparkles size={17} color="var(--on-accent)" />}
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.2 }}>
@@ -192,36 +176,28 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>{errorMsg}</div>
             </div>
           </div>
+        ) : status === "complete" ? (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+            padding: "36px 16px", background: "var(--bg-subtle)", borderRadius: 10,
+          }}>
+            <CheckCircle2 size={28} color="var(--success)" />
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center" }}>
+              Your MENA marketing strategy is ready.
+            </div>
+          </div>
         ) : (
-          <div
-            ref={scrollRef}
-            style={{
-              maxHeight: 360, minHeight: 120,
-              overflowY: "auto",
-              background: "var(--bg-subtle)",
-              borderRadius: 10,
-              padding: "14px 16px",
-              fontSize: 13,
-              lineHeight: 1.7,
-              color: "var(--text-secondary)",
-              whiteSpace: "pre-wrap",
-              fontFamily: "inherit",
-              scrollbarWidth: "thin",
-            }}
-          >
-            {planText ? (
-              <>
-                {planText}
-                {status === "generating" && (
-                  <span style={{ display: "inline-block", width: 2, height: 14, background: "var(--accent-primary)", marginLeft: 2, verticalAlign: "text-bottom", opacity: 0.9 }} />
-                )}
-              </>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-tertiary)" }}>
-                <Loader2 size={14} className="animate-spin" />
-                <span>Thinking...</span>
-              </div>
-            )}
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14,
+            minHeight: 160,
+            background: "var(--bg-subtle)",
+            borderRadius: 10,
+            padding: "24px 16px",
+          }}>
+            <Loader2 size={22} className="animate-spin" color="var(--accent-primary)" />
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center" }}>
+              {PROGRESS_MESSAGES[progressIdx]}
+            </div>
           </div>
         )}
 
@@ -229,7 +205,7 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
         {status === "generating" && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, color: "var(--text-tertiary)", fontSize: 12 }}>
             <Loader2 size={12} className="animate-spin" />
-            Crafting your MENA marketing strategy — this takes about 30 seconds
+            Crafting your MENA marketing strategy — this can take a few minutes
           </div>
         )}
 
@@ -270,7 +246,7 @@ export function GeneratePlanDialog({ open, onClose, uid, project }: GeneratePlan
             <button
               className="btn-primary"
               style={{ width: "auto", padding: "8px 18px", fontSize: 13 }}
-              onClick={() => { setStatus("generating"); setPlanText(""); setErrorMsg(""); started.current = false; generate(); }}
+              onClick={() => { setStatus("generating"); setErrorMsg(""); started.current = false; generate(); }}
             >
               Try again
             </button>

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { updateProfile, deleteUser } from "firebase/auth";
 import {
-  User, Palette, Shield, Bell, LogOut, Trash2,
+  User, Palette, Shield, LogOut, Trash2,
   CheckCircle2, AlertCircle, Sun, Moon, Monitor,
   Pencil, Check, X, Mail, Calendar, Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { signOut, resetPassword, getFirebaseAuth } from "@/lib/firebase/auth";
+import { signOut, resetPassword } from "@/lib/firebase/auth";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -25,30 +25,6 @@ function SectionHead({ icon: Icon, color, title }: { icon: React.ElementType; co
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
-  return (
-    <div
-      role="switch"
-      aria-checked={on}
-      onClick={onChange}
-      style={{
-        width: 42, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", flexShrink: 0,
-        background: on ? "var(--accent-primary)" : "var(--bg-subtle)",
-        border: `1px solid ${on ? "var(--accent-primary)" : "var(--border-strong)"}`,
-        transition: "background 0.2s, border-color 0.2s",
-      }}
-    >
-      <div style={{
-        position: "absolute", top: 2,
-        left: on ? "calc(100% - 22px)" : 2,
-        width: 18, height: 18, borderRadius: "50%",
-        background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-        transition: "left 0.2s",
-      }} />
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const THEMES = [
@@ -56,12 +32,6 @@ const THEMES = [
   { key: "dark",   label: "Dark",   Icon: Moon },
   { key: "system", label: "System", Icon: Monitor },
 ] as const;
-
-const NOTIF_ROWS = [
-  { key: "perf"   as const, title: "Performance Alerts",       desc: "Get notified when CPA or ROAS cross your targets" },
-  { key: "weekly" as const, title: "Weekly Digest",            desc: "Summary of all project performance every Monday" },
-  { key: "phase"  as const, title: "Campaign Phase Updates",   desc: "Alerts when a campaign moves to the next phase" },
-];
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -76,9 +46,6 @@ export default function SettingsPage() {
   // Security
   const [resetSent,    setResetSent]    = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-
-  // Notifications
-  const [notifs, setNotifs] = useState({ perf: true, weekly: false, phase: true });
 
   // Sign out
   const [signingOut, setSigningOut] = useState(false);
@@ -95,24 +62,9 @@ export default function SettingsPage() {
     if (user) setNameValue(user.displayName ?? "");
   }, [user]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("aiopt_notif");
-      if (raw) setNotifs(JSON.parse(raw));
-    } catch { /* ignore */ }
-  }, []);
-
   function flash(type: "success" | "error", msg: string) {
     setFeedback({ type, msg });
     setTimeout(() => setFeedback(null), 4000);
-  }
-
-  function toggleNotif(key: keyof typeof notifs) {
-    setNotifs(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      try { localStorage.setItem("aiopt_notif", JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
   }
 
   async function handleSaveName() {
@@ -232,7 +184,7 @@ export default function SettingsPage() {
               {user.photoURL
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={user.photoURL} alt={initials} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{initials}</span>
+                : <span style={{ fontSize: 22, fontWeight: 700, color: "var(--liquid-fg)" }}>{initials}</span>
               }
             </div>
 
@@ -258,7 +210,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleSaveName}
                       disabled={nameSaving || !nameValue.trim()}
-                      style={{ width: 36, height: 36, borderRadius: 9, border: "none", background: "var(--accent-primary)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: (nameSaving || !nameValue.trim()) ? 0.5 : 1 }}
+                      style={{ width: 36, height: 36, borderRadius: 9, border: "none", background: "var(--accent-primary)", color: "var(--on-accent)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: (nameSaving || !nameValue.trim()) ? 0.5 : 1 }}
                     >
                       <Check size={14} />
                     </button>
@@ -330,7 +282,7 @@ export default function SettingsPage() {
 
         {/* ── Appearance ──────────────────────────────────────────────────── */}
         <div className="card" style={{ padding: "20px 24px", marginBottom: 14 }}>
-          <SectionHead icon={Palette} color="#C084FC" title="Appearance" />
+          <SectionHead icon={Palette} color="var(--accent-violet)" title="Appearance" />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {THEMES.map(({ key, label, Icon }) => {
               const active = theme === key;
@@ -341,9 +293,9 @@ export default function SettingsPage() {
                   style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "10px 20px",
                     borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", transition: "all 0.13s",
-                    border: `1px solid ${active ? "#C084FC" : "var(--border-default)"}`,
-                    background: active ? "color-mix(in srgb, #C084FC 10%, transparent)" : "var(--bg-subtle)",
-                    color: active ? "#C084FC" : "var(--text-secondary)",
+                    border: `1px solid ${active ? "var(--accent-violet)" : "var(--border-default)"}`,
+                    background: active ? "color-mix(in srgb, var(--accent-violet) 10%, transparent)" : "var(--bg-subtle)",
+                    color: active ? "var(--accent-violet)" : "var(--text-secondary)",
                     fontWeight: active ? 600 : 400,
                   }}
                 >
@@ -383,27 +335,6 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
-
-        {/* ── Notifications ───────────────────────────────────────────────── */}
-        <div className="card" style={{ padding: "20px 24px", marginBottom: 14 }}>
-          <SectionHead icon={Bell} color="var(--warning)" title="Notifications" />
-          {NOTIF_ROWS.map(({ key, title, desc }, i) => (
-            <div
-              key={key}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
-                padding: "14px 0",
-                borderBottom: i < NOTIF_ROWS.length - 1 ? "1px solid var(--border-default)" : "none",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{title}</div>
-                <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{desc}</div>
-              </div>
-              <Toggle on={notifs[key]} onChange={() => toggleNotif(key)} />
-            </div>
-          ))}
-        </div>
 
         {/* ── Sign Out ────────────────────────────────────────────────────── */}
         <div className="card" style={{ padding: "20px 24px", marginBottom: 14 }}>

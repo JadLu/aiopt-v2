@@ -10,7 +10,8 @@ import {
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase/auth";
-import { subscribeToCredits, initUserCredits } from "@/lib/firebase/credits";
+import { subscribeToCredits } from "@/lib/firebase/credits";
+import { authFetch } from "@/lib/auth-fetch";
 
 interface AuthContextValue {
   user: User | null;
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         setCreditsLoading(true);
         // Ensure existing users who predate the credit system get their document created
-        initUserCredits(u.uid).catch(() => {});
+        authFetch("/api/init-credits", { method: "POST" }).catch(() => {});
         unsubCreditsRef.current = subscribeToCredits(
           u.uid,
           (bal) => {

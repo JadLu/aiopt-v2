@@ -14,7 +14,6 @@ import {
   type UserCredential,
 } from "firebase/auth";
 import { getFirebaseApp } from "./config";
-import { initUserCredits } from "./credits";
 
 /** Lazy getter — ensures Firebase is only initialized client-side. */
 export function getFirebaseAuth(): Auth {
@@ -36,7 +35,6 @@ export async function signUp(
 ): Promise<UserCredential> {
   const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
   await updateProfile(credential.user, { displayName });
-  await initUserCredits(credential.user.uid);
   return credential;
 }
 

@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Mail, Lock, User, AlertCircle, CheckCircle2 } from "lucide-react";
 import { signIn, signUp, signInWithGoogle, getGoogleRedirectResult, resetPassword, mapFirebaseError } from "@/lib/firebase/auth";
-import { initUserCredits } from "@/lib/firebase/credits";
 
 type Mode = "login" | "signup" | "reset";
 
@@ -47,7 +46,6 @@ export function AuthForm() {
     getGoogleRedirectResult()
       .then(async (result) => {
         if (result?.user) {
-          await initUserCredits(result.user.uid);
           router.push("/dashboard");
         } else {
           setGoogleLoading(false);
@@ -126,26 +124,9 @@ export function AuthForm() {
     <div className="glass-card fade-up" style={{ borderRadius: "var(--r-hero)", padding: "36px", width: "100%", maxWidth: "440px" }}>
       {/* Logo / Brand */}
       <div style={{ textAlign: "center", marginBottom: "28px" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: "linear-gradient(135deg, #5AC8D6 0%, #6FB1E8 100%)",
-            marginBottom: 14,
-            boxShadow: "0 4px 16px rgba(90,200,214,0.35)",
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
-          </svg>
-        </div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>AIOPT</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="brand-mark" src="/logo-icon.png" alt="" width={56} height={56} style={{ width: 56, height: 56, margin: "0 auto 14px" }} />
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>POLARIS SM</h1>
         <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4, marginBottom: 0 }}>
           {mode === "reset" ? "Reset your password" : "All-in-One E-commerce Tool"}
         </p>

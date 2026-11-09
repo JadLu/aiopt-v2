@@ -1,59 +1,30 @@
-import { TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface KpiCardProps {
   label: string;
-  value: string;
-  sub?: string;
-  trend?: { direction: "up" | "down"; label: string };
+  /** null renders a loading shimmer. */
+  value: string | null;
   icon: LucideIcon;
-  accentColor?: string;
-  gradientFrom?: string;
-  gradientTo?: string;
-  delay?: number;
+  /** Footer row pinned to the bottom: chips, links, a next action. */
+  children?: ReactNode;
 }
 
-export function KpiCard({
-  label,
-  value,
-  sub,
-  trend,
-  icon: Icon,
-  accentColor = "var(--accent-primary)",
-  gradientFrom = "#5AC8D6",
-  gradientTo = "#6FB1E8",
-  delay = 0,
-}: KpiCardProps) {
+export function KpiCard({ label, value, icon: Icon, children }: KpiCardProps) {
   return (
-    <div
-      className="glass-card kpi-card rise"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {/* Top row: icon + trend pill */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div
-          className="kpi-icon-wrap"
-          style={{ background: `linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%)`, boxShadow: `0 4px 12px ${gradientFrom}44` }}
-        >
-          <Icon size={16} color="#fff" strokeWidth={1.9} />
-        </div>
-        {trend && (
-          <span className={`kpi-trend-pill ${trend.direction}`}>
-            {trend.direction === "up"
-              ? <TrendingUp size={11} strokeWidth={2} />
-              : <TrendingDown size={11} strokeWidth={2} />}
-            {trend.label}
-          </span>
-        )}
+    <div className="glass kpi-tile lift">
+      <div className="kpi-head">
+        <span className="label-caps">{label}</span>
+        <span className="glass-inner icon-chip" aria-hidden>
+          <Icon size={16} strokeWidth={1.8} />
+        </span>
       </div>
-
-      {/* Value */}
-      <div className="kpi-value">{value}</div>
-
-      {/* Label + sub */}
-      <div>
-        <div className="kpi-label">{label}</div>
-        {sub && <div className="kpi-sub" style={{ marginTop: 2 }}>{sub}</div>}
-      </div>
+      {value === null ? (
+        <div className="shimmer" style={{ height: 44, width: 96 }} aria-label={`${label} loading`} />
+      ) : (
+        <span className="kpi-big">{value}</span>
+      )}
+      {children && <div className="kpi-foot">{children}</div>}
     </div>
   );
 }

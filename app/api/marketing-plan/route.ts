@@ -1,7 +1,22 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
+import { UNTRUSTED_RULE, untrusted } from "@/lib/prompt-safety";
 import { requireAuth, AuthError, unauthorizedResponse } from "@/lib/api-auth";
+import { getAdminFirestore } from "@/lib/firebase/admin";
+import { adminDeductCredits, adminRefundCredits } from "@/lib/firebase/admin-credits";
+import { CREDIT_COSTS } from "@/lib/credit-costs";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { marketingPlanSchema, parseBody } from "@/lib/validation";
+import { collectResponseText } from "@/lib/kie-text";
+import { notify, projectHref } from "@/lib/notify";
 
-const KIE_AI_API = "https://api.kie.ai/codex/v1/responses";
+export const runtime = "nodejs";
+// Hobby + Fluid Compute caps at 300s. Generation is reasoning-heavy and can
+// legitimately take several minutes — this is the longest window available
+// on the current plan.
+export const maxDuration = 300;
+
+const CREDIT_COST = CREDIT_COSTS.MARKETING_PLAN;
 
 const SYSTEM_PROMPT = `You are an expert marketing strategist specializing in MENA (Middle East and North Africa) e-commerce. You understand the unique cultural dynamics, consumer behaviors, and digital ecosystems of markets including Saudi Arabia, UAE, Egypt, Morocco, Kuwait, Bahrain, Qatar, Oman, Jordan, Lebanon, and Tunisia.
 
@@ -18,67 +33,23 @@ Your expertise covers:
 
 Generate comprehensive, actionable, data-driven marketing plans tailored to the specific MENA country and product. Always structure plans with clear sections, specific platforms and tactics, budget recommendations, and measurable goals aligned with the given performance targets.`;
 
-export async function POST(request: NextRequest) {
-  try { await requireAuth(request); } catch (e) {
-    if (e instanceof AuthError) return unauthorizedResponse();
-    throw e;
-  }
+interface ProjectInput {
+  id: string;
+  name: string;
+  description: string;
+  country: string;
+  emoji: string;
+  productImageUrl?: string;
+}
 
-  const apiKey = process.env.KIE_AI_API_KEY;
-  if (!apiKey) {
-    return new Response("KIE_AI_API_KEY is not configured", { status: 500 });
-  }
+function buildPrompt(project: ProjectInput): string {
+  return `Generate a comprehensive marketing plan for this e-commerce product:
 
-  let project: {
-    name: string;
-    description: string;
-    country: string;
-    targetCpa: number;
-    targetRoas: number;
-    emoji: string;
-    productImageUrl?: string;
-  };
+${UNTRUSTED_RULE}
 
-  try {
-    const body = await request.json();
-    project = body.project;
-  } catch {
-    return new Response("Invalid request body", { status: 400 });
-  }
-
-  if (!project?.name || !project?.country) {
-    return new Response("Missing required project fields", { status: 400 });
-  }
-
-  const upstream = await fetch(KIE_AI_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-5-5",
-      stream: true,
-      reasoning: { effort: "high" },
-      input: [
-        {
-          role: "developer",
-          content: [{ type: "input_text", text: SYSTEM_PROMPT }],
-        },
-        {
-          role: "user",
-          content: [
-            ...(project.productImageUrl
-              ? [{ type: "input_image" as const, image_url: project.productImageUrl }]
-              : []),
-            {
-              type: "input_text",
-              text: `Generate a comprehensive marketing plan for this e-commerce product:
-
-Product: ${project.emoji} ${project.name}
-Description: ${project.description || "Not provided"}
+Product: ${project.emoji} ${untrusted("name", project.name, 200)}
+Description: ${project.description ? untrusted("description", project.description) : "Not provided"}
 Target Market: ${project.country}
-Performance Targets: CPA ≤ $${project.targetCpa} | ROAS ≥ ${project.targetRoas}x
 
 Structure your plan with these sections:
 1. Market & Audience Analysis (${project.country}-specific insights)
@@ -88,8 +59,7 @@ Structure your plan with these sections:
 5. Key Performance Indicators & Benchmarks
 6. 30-Day Action Plan (prioritized quick wins)
 
-Be specific: name exact platforms, ad formats, audience segments, and realistic budget splits. Align all recommendations with the CPA and ROAS targets.
-
+Be specific: name exact platforms, ad formats, audience segments, and realistic budget splits.
 IMPORTANT: At the very start of each section below, embed the corresponding JSON data block BEFORE any narrative text. Use real data — no placeholders.
 
 --- Section 1: Market & Audience Analysis ---
@@ -126,87 +96,147 @@ Rules: exactly 2 primary metrics (CPA then ROAS), 4-6 secondary metrics (CTR, CP
 \`\`\`json:action
 {"weeks":[{"label":"Week 1","focus":"","tasks":[{"task":"","priority":"high","owner":""}]}]}
 \`\`\`
-Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium", or "low".`,
-            },
-          ],
-        },
-      ],
-    }),
-  });
+Rules: exactly 4 weeks, 3-5 tasks each, priority must be exactly "high", "medium", or "low".`;
+}
 
-  if (!upstream.ok) {
-    const errText = await upstream.text();
-    return new Response(`API error: ${errText}`, { status: upstream.status });
-  }
+function parseBlock(fullText: string, slug: string): unknown {
+  const re = new RegExp("```json:" + slug + "\\n([\\s\\S]*?)```");
+  const m = fullText.match(re);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch { return null; }
+}
 
-  if (!upstream.body) {
-    return new Response("Empty response from API", { status: 502 });
-  }
+/** Plan block slug (as written in the prompt) → key in planVisualData / planDraft. */
+const BLOCKS = {
+  "market-analysis": "market",
+  channels: "channels",
+  content: "content",
+  phases: "phases",
+  kpi: "kpi",
+  action: "action",
+} as const;
 
-  const encoder = new TextEncoder();
-  const upstreamReader = upstream.body.getReader();
+async function runGeneration(uid: string, project: ProjectInput): Promise<void> {
+  const db = getAdminFirestore();
+  const projectRef = db.collection("users").doc(uid).collection("projects").doc(project.id);
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let currentEvent = "";
-      let lastHeartbeat = Date.now();
+  try {
+    const apiKey = process.env.KIE_AI_API_KEY;
+    if (!apiKey) throw new Error("KIE_AI_API_KEY is not configured");
 
-      try {
-        while (true) {
-          const { done, value } = await upstreamReader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            if (line.startsWith("event:")) {
-              currentEvent = line.slice(6).trim();
-            } else if (line.startsWith("data:")) {
-              const dataStr = line.slice(5).trim();
-              if (dataStr === "[DONE]") {
-                controller.close();
-                return;
-              }
-              if (currentEvent === "response.output_text.delta") {
-                try {
-                  const parsed = JSON.parse(dataStr) as { delta?: string };
-                  if (parsed.delta) {
-                    controller.enqueue(encoder.encode(parsed.delta));
-                    lastHeartbeat = Date.now();
-                  }
-                } catch {
-                  // skip malformed JSON
-                }
-              }
-            } else if (line === "") {
-              currentEvent = "";
-            }
-          }
-
-          // Send heartbeat comment every 5s of inactivity to keep connection alive
-          if (Date.now() - lastHeartbeat > 5000) {
-            controller.enqueue(encoder.encode(": heartbeat\n"));
-            lastHeartbeat = Date.now();
-          }
-        }
-      } catch (err) {
-        controller.error(err);
-      } finally {
-        upstreamReader.releaseLock();
-        try { controller.close(); } catch { /* already closed */ }
+    // Publish each section to `planDraft` the moment its JSON block is complete, so the
+    // project page can show the plan filling in while it is still being written.
+    const emitted = new Set<string>();
+    let writes: Promise<unknown> = Promise.resolve();
+    const onText = (text: string, delta: string) => {
+      if (!delta.includes("`")) return; // a block can only complete on a code fence
+      for (const [slug, key] of Object.entries(BLOCKS)) {
+        if (emitted.has(slug)) continue;
+        const value = parseBlock(text, slug);
+        if (value === null) continue;
+        emitted.add(slug);
+        writes = writes
+          .then(() => projectRef.update({ [`planDraft.${key}`]: value }))
+          .catch(() => { /* draft is best-effort; the final write below is authoritative */ });
       }
-    },
-  });
+    };
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    const fullText = await collectResponseText(apiKey, {
+      system: SYSTEM_PROMPT,
+      user: buildPrompt(project),
+      imageUrl: project.productImageUrl,
+      effort: "medium",
+      onText,
+    });
+    await writes;
+    const planVisualData: Record<string, unknown> = {
+      market:   parseBlock(fullText, "market-analysis"),
+      channels: parseBlock(fullText, "channels"),
+      content:  parseBlock(fullText, "content"),
+      phases:   parseBlock(fullText, "phases"),
+      kpi:      parseBlock(fullText, "kpi"),
+      action:   parseBlock(fullText, "action"),
+    };
+    const cleanedData = Object.fromEntries(
+      Object.entries(planVisualData).filter(([, v]) => v !== null)
+    );
+
+    await projectRef.update({
+      marketingPlan: fullText,
+      planVisualData: cleanedData,
+      status: "active",
+      marketingPlanStatus: "done",
+      marketingPlanError: null,
+      planDraft: FieldValue.delete(),
+      lastActivity: new Date(),
+    });
+    await notify(uid, {
+      id: `plan-ready-${project.id}-${Date.now()}`,
+      type: "plan_ready",
+      title: "Your marketing plan is ready",
+      body: `The plan for “${project.name}” is finished. Pick an angle to start on creatives.`,
+      href: projectHref(project.id),
+    });
+  } catch (err) {
+    console.error(`[marketing-plan] generation failed for project ${project.id}:`, err);
+    await adminRefundCredits(uid, CREDIT_COST).catch(() => console.error("[marketing-plan] refund failed"));
+    await projectRef.update({
+      marketingPlanStatus: "failed",
+      marketingPlanError: err instanceof Error ? err.message : "Something went wrong",
+      planDraft: FieldValue.delete(),
+    }).catch(() => { /* project may have been deleted mid-generation */ });
+    await notify(uid, {
+      id: `plan-failed-${project.id}-${Date.now()}`,
+      type: "generation_failed",
+      title: "Marketing plan failed",
+      body: `We couldn’t finish the plan for “${project.name}”. Your ${CREDIT_COST} credits were refunded.`,
+      href: projectHref(project.id),
+    });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  let uid: string;
+  try { uid = await requireAuth(request); } catch (e) {
+    if (e instanceof AuthError) return unauthorizedResponse();
+    throw e;
+  }
+
+  if (!process.env.KIE_AI_API_KEY) {
+    return new Response("KIE_AI_API_KEY is not configured", { status: 500 });
+  }
+
+  const limited = await enforceRateLimit(uid, "generate");
+  if (limited) return limited;
+
+  const parsed = await parseBody(request, marketingPlanSchema);
+  if (!parsed.ok) return parsed.response;
+  const project: ProjectInput = parsed.data.project;
+
+  const deduction = await adminDeductCredits(uid, CREDIT_COST);
+  if (!deduction.success) {
+    return Response.json(
+      { error: "insufficient_credits", required: CREDIT_COST, balance: deduction.balance },
+      { status: 402 }
+    );
+  }
+
+  const db = getAdminFirestore();
+  try {
+    await db.collection("users").doc(uid).collection("projects").doc(project.id).update({
+      marketingPlanStatus: "generating",
+      marketingPlanError: null,
+      planDraft: {},
+    });
+  } catch {
+    // Project missing / write failed — don't keep the credits.
+    await adminRefundCredits(uid, CREDIT_COST).catch(() => console.error("[marketing-plan] refund failed"));
+    return new Response("Project not found", { status: 404 });
+  }
+
+  // Runs after the response is sent; on Vercel with Fluid Compute this keeps
+  // executing (up to maxDuration) even if the client disconnects.
+  after(() => runGeneration(uid, project));
+
+  return Response.json({ status: "started" });
 }

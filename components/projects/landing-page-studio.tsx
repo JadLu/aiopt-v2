@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Sparkles, RefreshCw, Download, Trash2, MoreVertical, X,
+  Sparkles, Download, Trash2, MoreVertical, X,
   Globe, ExternalLink, FileCode2, Image as ImageIcon,
-  ChevronDown, Plus, Copy, Check,
+  ChevronDown, Plus, Copy, Check, Loader2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { authFetch } from "@/lib/auth-fetch";
-import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
+import { authFetch, readApiError } from "@/lib/auth-fetch";
+import { CREDIT_COSTS } from "@/lib/credit-costs";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import { CreditTooltip } from "@/components/credits/CreditTooltip";
+import { LiquidButton } from "@/components/ui/liquid-button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ChipGroup } from "./studio-parts";
 import {
   createAiLandingPage, updateAiLandingPageHtml, failAiLandingPage,
   deleteAiLandingPage, subscribeToAiLandingPages,
@@ -22,12 +25,6 @@ import type { Project } from "@/lib/mock-data";
 // ─── Copyframes ───────────────────────────────────────────────────────────────
 
 const COPYFRAMES: Copyframe[] = ["AIDA", "PAS", "FAP"];
-
-const COPYFRAME_COLOR: Record<Copyframe, string> = {
-  AIDA: "var(--accent-primary)",
-  PAS:  "var(--warning)",
-  FAP:  "#C084FC",
-};
 
 // ─── Language helpers ─────────────────────────────────────────────────────────
 
@@ -53,7 +50,7 @@ interface CriteriaState {
 function defaultCriteria(project: Project): CriteriaState {
   const vd = project.planVisualData;
   return {
-    segmentIdx: vd?.market?.segments?.length ? 0 : null,
+    segmentIdx: vd?.market?.segments?.length ? Math.min(project.selectedAngle ?? 0, vd.market.segments.length - 1) : null,
     hookIdx:    vd?.content?.hooks?.length   ? 0 : null,
   };
 }
@@ -310,10 +307,11 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
+      type="button"
+      className="chip studio-mini"
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 7, border: "1px solid var(--border-default)", background: copied ? "rgba(90,200,214,0.12)" : "var(--chip)", color: copied ? "var(--accent-primary)" : "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", flexShrink: 0 }}
     >
-      {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+      {copied ? <><Check size={13} aria-hidden /> Copied</> : <><Copy size={13} aria-hidden /> Copy</>}
     </button>
   );
 }
@@ -356,54 +354,27 @@ function LandingPageCard({
   };
   const slug = pageSlug(page, projectName);
   const title = pageTitle(page);
-  const cfColor = COPYFRAME_COLOR[page.copyframe];
 
   return (
-    <div style={{
-      borderRadius: 14, overflow: "hidden",
-      background: "var(--bg-elevated)", border: "1px solid var(--border-default)",
-      display: "flex", flexDirection: "column",
-      transition: "transform 0.22s var(--ease)",
-    }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
-    >
+    <article className="glass lp-card lift">
       {/* Browser chrome */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6,
-        padding: "9px 12px",
-        background: "var(--bg-subtle)",
-        borderBottom: "1px solid var(--hairline)",
-      }}>
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#FF5F57", display: "inline-block", flexShrink: 0 }} />
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#FEBC2E", display: "inline-block", flexShrink: 0 }} />
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#28C840", display: "inline-block", flexShrink: 0 }} />
-        <div style={{
-          flex: 1, background: "var(--chip)", borderRadius: 5, padding: "3px 8px",
-          fontSize: 11, color: "var(--text-tertiary)", textAlign: "center",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {slug}
-        </div>
+      <div className="lp-chrome" aria-hidden>
+        <i /><i /><i />
+        <span>{slug}</span>
       </div>
 
       {/* Preview area */}
-      <div style={{
-        height: 220, position: "relative",
-        background: "var(--bg-subtle)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        overflow: "hidden",
-        cursor: page.html ? "pointer" : "default",
-      }}
-        onClick={() => page.html && onPreview(page)}
-      >
+      <div style={{ height: 220, position: "relative", background: "var(--glass-inner)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         {page.status === "pending" && !page.html ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", lineHeight: 1.5 }}>Landing page<br />generating…</span>
+          <div className="gen-state shimmer" role="status">
+            <Loader2 size={24} className="spinner" style={{ color: "var(--accent-primary)" }} aria-hidden />
+            <span>Landing page<br />generating…</span>
           </div>
         ) : page.status === "failed" ? (
-          <span style={{ fontSize: 12, color: "var(--danger)", textAlign: "center" }}>Generation failed</span>
+          <div className="gen-state">
+            <AlertCircle size={22} style={{ color: "var(--danger)" }} aria-hidden />
+            <span style={{ color: "var(--danger)" }}>Generation failed</span>
+          </div>
         ) : page.html ? (
           <>
             <iframe
@@ -411,91 +382,62 @@ function LandingPageCard({
               sandbox="allow-same-origin"
               style={{ position: "absolute", top: 0, left: 0, width: "200%", height: "200%", border: "none", transformOrigin: "top left", transform: "scale(0.5)", pointerEvents: "none" }}
               title={title}
+              tabIndex={-1}
             />
-            <div style={{ position: "absolute", inset: 0 }} />
+            <button type="button" className="gen-open" aria-label={`Preview landing page: ${title}`} onClick={() => onPreview(page)} />
           </>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: 0.5 }}>
-            <Globe size={24} strokeWidth={1.4} color="var(--text-tertiary)" />
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", lineHeight: 1.5 }}>Landing page preview<br />or launch live</span>
+          <div className="gen-state" style={{ opacity: 0.7 }}>
+            <Globe size={24} strokeWidth={1.4} aria-hidden />
+            <span>Landing page preview<br />or launch live</span>
           </div>
         )}
       </div>
 
       {/* Bottom bar */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: "10px 12px",
-        borderTop: "1px solid var(--hairline)",
-      }}>
-        <span style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: ".04em",
-          color: cfColor,
-          background: `color-mix(in srgb, ${cfColor} 14%, transparent)`,
-          padding: "2px 7px", borderRadius: 5, flexShrink: 0,
-        }}>
-          {page.copyframe}
-        </span>
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 14px", borderTop: "1px solid var(--hairline)" }}>
+        <span className="stat-chip" style={{ fontWeight: 800, color: "var(--accent-primary)", flex: "none" }}>{page.copyframe}</span>
+        <span dir="auto" style={{ flex: "1 1 120px", minWidth: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {title}
         </span>
-        <div style={{ display: "flex", gap: 4, flexShrink: 0, position: "relative" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, position: "relative" }}>
           {page.html && (
             <>
-              <button
-                onClick={handleJpegExport}
-                disabled={jpegBusy}
-                title="Export as JPEG"
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--chip)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: jpegBusy ? "default" : "pointer", fontFamily: "inherit", opacity: jpegBusy ? 0.6 : 1 }}
-              >
-                {jpegBusy
-                  ? <div style={{ width: 10, height: 10, borderRadius: "50%", border: "1.5px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-                  : <ImageIcon size={11} />
-                }
-                JPEG
+              <button type="button" className="chip studio-mini" onClick={handleJpegExport} disabled={jpegBusy} title="Export as JPEG">
+                {jpegBusy ? <Loader2 size={13} className="spinner" aria-hidden /> : <ImageIcon size={13} aria-hidden />} JPEG
               </button>
-              <button
-                onClick={handleHtmlExport}
-                title="Download HTML file"
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--chip)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <FileCode2 size={11} /> HTML
+              <button type="button" className="chip studio-mini" onClick={handleHtmlExport} title="Download HTML file">
+                <FileCode2 size={13} aria-hidden /> HTML
               </button>
-              <button
-                onClick={() => { setMenuOpen(false); onYouCanExport(page); }}
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--chip)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <Download size={11} /> YouCan
+              <button type="button" className="chip studio-mini" onClick={() => { setMenuOpen(false); onYouCanExport(page); }}>
+                <Download size={13} aria-hidden /> YouCan
               </button>
             </>
           )}
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--chip)", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <MoreVertical size={13} />
+          <button type="button" className="chip studio-mini" style={{ width: 34, padding: 0, justifyContent: "center" }} aria-label="More options" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
+            <MoreVertical size={15} aria-hidden />
           </button>
           {menuOpen && (
             <>
               <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
-              <div style={{ position: "absolute", bottom: "calc(100% + 4px)", right: 0, zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "4px 0", minWidth: 140, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+              <div className="glass gen-menu" role="menu" style={{ top: "auto", bottom: "calc(100% + 8px)", right: 0 }}>
                 {page.html && (
-                  <button onClick={() => { onPreview(page); setMenuOpen(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", background: "none", border: "none", color: "var(--text-primary)", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                    <ExternalLink size={13} strokeWidth={1.8} /> Preview
+                  <button type="button" role="menuitem" className="menu-item" onClick={() => { onPreview(page); setMenuOpen(false); }}>
+                    <ExternalLink size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Preview</span>
                   </button>
                 )}
                 <button
+                  type="button" role="menuitem" className="menu-item danger"
                   onClick={async () => { await deleteAiLandingPage(uid, projectId, page.id); setMenuOpen(false); }}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 14px", background: "none", border: "none", color: "var(--danger)", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
                 >
-                  <Trash2 size={13} strokeWidth={1.8} /> Delete
+                  <Trash2 size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Delete</span>
                 </button>
               </div>
             </>
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -605,12 +547,6 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
   // ── Generate ──────────────────────────────────────────────────────────────
 
   const handleGenerate = useCallback(async () => {
-    const result = await deductCredits(uid, CREDIT_COSTS.LANDING_PAGE);
-    if (!result.success) {
-      setCreditModalOpen(true);
-      return;
-    }
-
     setGen({ status: "streaming", html: "", error: null });
     pendingDocRef.current = null;
 
@@ -641,7 +577,7 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
             country:         project.country,
             emoji:           project.emoji,
             productImageUrl: project.productImageUrl,
-            photoUrls:       photos.length > 0 ? photos : undefined,
+            photoUrls:       photos.length > 0 ? photos.slice(0, 4) : undefined,
             gifUrl:          uploadedGif ?? undefined,
           },
           copyframe,
@@ -650,7 +586,15 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error(await res.text());
+      if (res.status === 402) {
+        // Server refused (not enough credits): nothing was charged.
+        await failAiLandingPage(uid, project.id, docId);
+        pendingDocRef.current = null;
+        setGen({ status: "idle", html: "", error: null });
+        setCreditModalOpen(true);
+        return;
+      }
+      if (!res.ok || !res.body) throw new Error(await readApiError(res, "Generation failed"));
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -673,7 +617,6 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
       pendingDocRef.current = null;
 
     } catch (err) {
-      await refundCredits(uid, CREDIT_COSTS.LANDING_PAGE);
       const msg = err instanceof Error ? err.message : "Generation failed";
       setGen({ status: "error", html: "", error: msg });
       if (pendingDocRef.current) {
@@ -681,7 +624,7 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
         pendingDocRef.current = null;
       }
     }
-  }, [uid, project, copyframe, language, customPrompt, criteriaPayload, uploadedPhotos, uploadedGif]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [uid, project, copyframe, language, customPrompt, criteriaPayload, uploadedPhotos, uploadedGif]);  
 
   // ── Export handlers ───────────────────────────────────────────────────────
 
@@ -716,6 +659,14 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
     { label: dLabel,      value: undefined },
   ];
 
+  const openInTab = (html: string) => {
+    const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    window.open(blobUrl, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+  };
+
+  const photoSlots = [0, 1, 2, 3];
+
   return (
     <div style={{ display: "grid", gap: 20 }}>
 
@@ -735,262 +686,185 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
         onChange={handleGifFileChange}
       />
 
-      {/* Generator card */}
-      <div className="glass-card" style={{ overflow: "hidden", padding: 0 }}>
-        <textarea
-          value={customPrompt}
-          onChange={e => setCustomPrompt(e.target.value)}
-          disabled={isGenerating}
-          placeholder="Describe what the landing page should promote…"
-          style={{
-            width: "100%", padding: "16px 18px",
-            background: "transparent", border: "none", outline: "none",
-            fontSize: 14, color: "var(--text-primary)",
-            fontFamily: "inherit", lineHeight: 1.65, resize: "none",
-            boxSizing: "border-box", minHeight: 72,
-            opacity: isGenerating ? 0.55 : 1,
-          }}
-        />
+      {/* Generator */}
+      <section className="glass studio-card" aria-label="Landing page generator">
+        <label className="studio-field">
+          <span className="field-label">What should the page promote?</span>
+          <textarea
+            className="input-well"
+            dir="auto"
+            rows={3}
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            disabled={isGenerating}
+            placeholder="Describe what the landing page should promote…"
+            style={{ borderRadius: 18, padding: "14px 16px", resize: "vertical" }}
+          />
+        </label>
 
-        {/* Photos + GIF row */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "10px 18px",
-          borderTop: "1px solid var(--hairline)",
-          flexWrap: "wrap",
-        }}>
-          {/* 3 photo slots */}
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", flexShrink: 0 }}>PHOTOS</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[0, 1, 2, 3].map(idx => {
+        {/* Photos + GIF */}
+        <div className="studio-field">
+          <span className="field-label">
+            Photos <span style={{ letterSpacing: 0, fontWeight: 400, textTransform: "none", opacity: 0.8 }}>· up to 4 photos and 1 GIF</span>
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            {photoSlots.map(idx => {
               const url = uploadedPhotos[idx];
               const isUploading = uploadingIdx === idx;
               return (
-                <div key={idx} style={{ position: "relative", width: 48, height: 48, borderRadius: 8, overflow: "hidden", border: url ? "1.5px solid var(--accent-primary)" : "1.5px dashed var(--border-default)", background: "var(--bg-subtle)", flexShrink: 0, cursor: url || isUploading ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={() => !url && !isUploading && handlePhotoSlotClick(idx)}
-                >
-                  {isUploading ? (
-                    <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-                  ) : url ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <button
-                        onClick={e => { e.stopPropagation(); removePhoto(idx); }}
-                        style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                      >
-                        <X size={9} strokeWidth={2.5} />
-                      </button>
-                    </>
-                  ) : (
-                    <Plus size={16} strokeWidth={2} style={{ color: "var(--text-tertiary)" }} />
+                <div key={idx} style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    className={`photo-slot${url ? " filled" : ""}`}
+                    disabled={!!url || isUploading || isGenerating}
+                    aria-label={url ? `Photo ${idx + 1} added` : `Add photo ${idx + 1}`}
+                    onClick={() => handlePhotoSlotClick(idx)}
+                  >
+                    {isUploading ? <Loader2 size={20} className="spinner" style={{ color: "var(--accent-primary)" }} aria-hidden />
+                      : url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt="" />
+                      ) : <Plus size={20} strokeWidth={2} aria-hidden />}
+                  </button>
+                  {url && (
+                    <button type="button" className="photo-slot-remove" aria-label={`Remove photo ${idx + 1}`} onClick={() => removePhoto(idx)}>
+                      <X size={12} strokeWidth={2.5} aria-hidden />
+                    </button>
                   )}
                 </div>
               );
             })}
-          </div>
 
-          {/* Divider */}
-          <div style={{ width: 1, height: 36, background: "var(--hairline)", flexShrink: 0 }} />
+            <span aria-hidden style={{ width: 1, height: 40, background: "var(--hairline)", margin: "0 4px" }} />
 
-          {/* GIF slot */}
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#C084FC", letterSpacing: ".06em", textTransform: "uppercase", flexShrink: 0 }}>GIF</span>
-          <div
-            style={{ position: "relative", width: 48, height: 48, borderRadius: 8, overflow: "hidden", border: uploadedGif ? "1.5px solid #C084FC" : "1.5px dashed var(--border-default)", background: "var(--bg-subtle)", flexShrink: 0, cursor: uploadedGif || uploadingGif ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={() => !uploadedGif && !uploadingGif && handleGifSlotClick()}
-          >
-            {uploadingGif ? (
-              <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "#C084FC", animation: "spin 1s linear infinite" }} />
-            ) : uploadedGif ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedGif} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <button
-                  onClick={e => { e.stopPropagation(); setUploadedGif(null); }}
-                  style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                >
-                  <X size={9} strokeWidth={2.5} />
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className={`photo-slot gif${uploadedGif ? " filled" : ""}`}
+                disabled={!!uploadedGif || uploadingGif || isGenerating}
+                aria-label={uploadedGif ? "GIF added" : "Add a GIF"}
+                onClick={handleGifSlotClick}
+              >
+                {uploadingGif ? <Loader2 size={20} className="spinner" aria-hidden />
+                  : uploadedGif ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={uploadedGif} alt="" />
+                      <span className="photo-slot-tag">GIF</span>
+                    </>
+                  ) : <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".04em" }}>GIF</span>}
+              </button>
+              {uploadedGif && (
+                <button type="button" className="photo-slot-remove" aria-label="Remove GIF" onClick={() => setUploadedGif(null)}>
+                  <X size={12} strokeWidth={2.5} aria-hidden />
                 </button>
-                {/* GIF badge */}
-                <span style={{ position: "absolute", bottom: 2, left: 2, fontSize: 7, fontWeight: 800, background: "#C084FC", color: "#fff", padding: "1px 3px", borderRadius: 3, lineHeight: 1 }}>GIF</span>
-              </>
-            ) : (
-              <span style={{ fontSize: 8, fontWeight: 800, color: "#C084FC", letterSpacing: ".04em" }}>GIF</span>
-            )}
+              )}
+            </div>
           </div>
-
-          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>4 photos + 1 GIF</span>
         </div>
 
-        {/* Prompt preview — shown by default, hideable */}
-        {showPrompt && (
-          <div style={{ borderTop: "1px solid var(--hairline)", padding: "12px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>Generation Prompt</span>
-              <CopyButton text={buildPromptText(project, criteriaPayload, language, copyframe, uploadedPhotos.filter(Boolean), uploadedGif, customPrompt, dLabel)} />
-            </div>
-            <pre style={{ margin: 0, padding: "11px 13px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 11.5, color: "var(--text-secondary)", fontFamily: "monospace", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 260, overflowY: "auto" }}>
-              {buildPromptText(project, criteriaPayload, language, copyframe, uploadedPhotos.filter(Boolean), uploadedGif, customPrompt, dLabel)}
-            </pre>
-          </div>
+        {segments.length > 0 && (
+          <ChipGroup label="Audience" items={segments.map(s => s.name)} selected={criteria.segmentIdx} disabled={isGenerating}
+            onPick={i => setCriteria(c => ({ ...c, segmentIdx: c.segmentIdx === i ? null : i }))} />
+        )}
+        {hooks.length > 0 && (
+          <ChipGroup label="Hook" items={hooks.slice(0, 3)} selected={criteria.hookIdx} disabled={isGenerating}
+            onPick={i => setCriteria(c => ({ ...c, hookIdx: c.hookIdx === i ? null : i }))} />
         )}
 
-        {/* Controls row */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 16,
-          padding: "10px 18px 14px",
-          borderTop: "1px solid var(--hairline)",
-          flexWrap: "wrap",
-        }}>
-          {/* Prompt toggle — same pattern as creative-studio */}
-          <button
-            onClick={() => setShowPrompt(s => !s)}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid var(--border-default)", background: showPrompt ? "color-mix(in srgb, var(--accent-primary) 10%, transparent)" : "transparent", color: showPrompt ? "var(--accent-primary)" : "var(--text-tertiary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", flexShrink: 0 }}
-          >
-            <span style={{ fontSize: 11 }}>{showPrompt ? "▲" : "▼"}</span> Prompt
+        {/* Prompt preview */}
+        <div className="studio-field">
+          <button type="button" className="chip" style={{ alignSelf: "flex-start" }} aria-expanded={showPrompt} aria-controls="lp-prompt" onClick={() => setShowPrompt(s => !s)}>
+            <ChevronDown size={15} strokeWidth={2.2} style={{ transform: showPrompt ? "rotate(180deg)" : undefined, transition: "transform .2s" }} aria-hidden />
+            {showPrompt ? "Hide generation prompt" : "Show generation prompt"}
           </button>
-
-          {/* COPYFRAME */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>COPYFRAME</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {COPYFRAMES.map(cf => {
-                const cfColor = COPYFRAME_COLOR[cf];
-                const active = copyframe === cf;
-                return (
-                  <button key={cf}
-                    onClick={() => setCopyframe(cf)}
-                    disabled={isGenerating}
-                    style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? cfColor : "var(--border-default)"}`, background: active ? `color-mix(in srgb, ${cfColor} 14%, transparent)` : "transparent", color: active ? cfColor : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1 }}
-                  >{cf}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* LANGUAGE */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>LANGUAGE</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {langOptions.map(opt => {
-                const active = language === opt.value;
-                return (
-                  <button key={opt.label}
-                    onClick={() => setLanguage(opt.value)}
-                    disabled={isGenerating}
-                    style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? "var(--accent-secondary)" : "var(--border-default)"}`, background: active ? "color-mix(in srgb, var(--accent-secondary) 14%, transparent)" : "transparent", color: active ? "var(--accent-secondary)" : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1 }}
-                  >{opt.label}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* AUDIENCE */}
-          {segments.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>AUDIENCE</span>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {segments.map((seg, i) => {
-                  const active = criteria.segmentIdx === i;
-                  return (
-                    <button key={i}
-                      onClick={() => setCriteria(c => ({ ...c, segmentIdx: c.segmentIdx === i ? null : i }))}
-                      disabled={isGenerating}
-                      style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? "var(--accent-primary)" : "var(--border-default)"}`, background: active ? "color-mix(in srgb, var(--accent-primary) 12%, transparent)" : "transparent", color: active ? "var(--accent-primary)" : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                    >{seg.name}</button>
-                  );
-                })}
+          {showPrompt && (
+            <div id="lp-prompt" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <CopyButton text={buildPromptText(project, criteriaPayload, language, copyframe, uploadedPhotos.filter(Boolean), uploadedGif, customPrompt, dLabel)} />
               </div>
+              <pre className="studio-pre">
+                {buildPromptText(project, criteriaPayload, language, copyframe, uploadedPhotos.filter(Boolean), uploadedGif, customPrompt, dLabel)}
+              </pre>
             </div>
           )}
+        </div>
 
-          {/* HOOK */}
-          {hooks.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>HOOK</span>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {hooks.slice(0, 3).map((h, i) => {
-                  const active = criteria.hookIdx === i;
-                  const label = h.length > 28 ? h.slice(0, 26) + "…" : h;
-                  return (
-                    <button key={i}
-                      onClick={() => setCriteria(c => ({ ...c, hookIdx: c.hookIdx === i ? null : i }))}
-                      disabled={isGenerating}
-                      style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? "var(--accent-secondary)" : "var(--border-default)"}`, background: active ? "color-mix(in srgb, var(--accent-secondary) 12%, transparent)" : "transparent", color: active ? "var(--accent-secondary)" : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1 }}
-                    >{label}</button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        <hr className="studio-divider" />
 
-          {/* Model + Generate */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)", display: "inline-block", flexShrink: 0 }} />
+        {/* Options + generate */}
+        <div className="studio-controls">
+          <div className="studio-control">
+            <span className="field-label">Copyframe</span>
+            <SegmentedControl
+              ariaLabel="Copyframe"
+              disabled={isGenerating}
+              value={copyframe}
+              onChange={setCopyframe}
+              options={COPYFRAMES.map(cf => ({ value: cf, label: cf }))}
+            />
+          </div>
+
+          <div className="studio-control">
+            <span className="field-label">Language</span>
+            <SegmentedControl
+              ariaLabel="Page language"
+              disabled={isGenerating}
+              value={language ?? "native"}
+              onChange={v => setLanguage(v === "native" ? undefined : v)}
+              options={langOptions.map(o => ({ value: (o.value ?? "native") as "en" | "fr" | "native", label: o.label }))}
+            />
+          </div>
+
+          <div className="studio-spacer">
+            <span className="stat-chip">
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)", flex: "none" }} />
               claude-opus-4-7
             </span>
             <CreditTooltip cost={CREDIT_COSTS.LANDING_PAGE}>
-              <button
-                className="btn-primary"
-                style={{ width: "auto", padding: "8px 18px", fontSize: 13, opacity: isGenerating ? 0.6 : 1 }}
+              <LiquidButton
+                icon={<Sparkles size={16} fill="currentColor" aria-hidden />}
+                loading={isGenerating}
                 onClick={handleGenerate}
-                disabled={isGenerating}
               >
-                {isGenerating
-                  ? <><RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> Building…</>
-                  : <><Sparkles size={13} /> + Generate</>
-                }
-              </button>
+                {isGenerating ? "Building…" : `Generate · ${CREDIT_COSTS.LANDING_PAGE} credits`}
+              </LiquidButton>
             </CreditTooltip>
           </div>
         </div>
 
         {gen.status === "error" && gen.error && (
-          <div style={{ margin: "0 18px 14px", padding: "8px 12px", background: "rgba(229,118,118,0.08)", borderRadius: 8, border: "1px solid rgba(229,118,118,0.20)" }}>
-            <span style={{ fontSize: 12, color: "var(--danger)" }}>{gen.error}</span>
-          </div>
+          <p role="alert" className="studio-error"><AlertCircle size={15} style={{ flex: "none" }} aria-hidden /> {gen.error}</p>
         )}
-      </div>
+      </section>
 
       {/* Live preview */}
       {(gen.status === "streaming" || gen.status === "done") && (
-        <div className="glass-card" style={{ padding: "18px 22px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Globe size={14} strokeWidth={1.8} style={{ color: "var(--accent-primary)" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                {isGenerating ? "Building your landing page…" : "Landing Page Preview"}
-              </span>
-              {isGenerating && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-primary)", background: "rgba(90,200,214,0.12)", padding: "2px 8px", borderRadius: 20 }}>
-                  {Math.round(gen.html.length / 1000)}KB
-                </span>
-              )}
+        <section className="glass studio-card" aria-label="Landing page preview">
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Globe size={16} strokeWidth={1.8} style={{ color: "var(--accent-primary)" }} aria-hidden />
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                {isGenerating ? "Building your landing page…" : "Landing page preview"}
+              </h3>
+              {isGenerating && <span className="status-live tabular">{Math.round(gen.html.length / 1000)} KB</span>}
             </div>
             {gen.status === "done" && (
               <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setExportOpen(v => !v)}
-                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent-primary)", background: "rgba(90,200,214,0.10)", color: "var(--accent-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  <Download size={12} strokeWidth={2} /> Export <ChevronDown size={10} strokeWidth={2} />
+                <button type="button" className="chip" aria-haspopup="menu" aria-expanded={exportOpen} onClick={() => setExportOpen(v => !v)}>
+                  <Download size={14} strokeWidth={2} aria-hidden /> Export <ChevronDown size={13} strokeWidth={2} aria-hidden />
                 </button>
                 {exportOpen && (
                   <>
                     <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setExportOpen(false)} />
-                    <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "4px 0", minWidth: 170, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+                    <div className="glass gen-menu" role="menu" style={{ top: "calc(100% + 8px)", right: 0 }}>
                       {([
                         { icon: Download,   label: "YouCan",       action: handleExportYouCan },
                         { icon: ImageIcon,  label: "Image (PNG)",  action: handleExportImage },
                         { icon: FileCode2,  label: "HTML file",    action: handleExportHtml },
                       ] as { icon: React.ElementType; label: string; action: () => void }[]).map(({ icon: Icon, label, action }) => (
-                        <button key={label} onClick={action}
-                          style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 14px", background: "none", border: "none", color: "var(--text-primary)", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-subtle)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                        >
-                          <Icon size={13} strokeWidth={1.8} /> {label}
+                        <button key={label} type="button" role="menuitem" className="menu-item" onClick={action}>
+                          <Icon size={14} strokeWidth={1.8} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
                         </button>
                       ))}
                     </div>
@@ -1000,11 +874,11 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
             )}
           </div>
 
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-default)", background: "#fff", position: "relative", height: isGenerating ? 200 : 600, transition: "height 0.3s ease" }}>
+          <div className="lp-frame" style={{ height: isGenerating ? 200 : 600, transition: "height 0.3s ease" }}>
             {isGenerating && gen.html.length < 100 ? (
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "var(--bg-subtle)" }}>
-                <RefreshCw size={24} strokeWidth={1.5} style={{ color: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Generating your landing page…</span>
+              <div className="gen-state shimmer" role="status">
+                <Loader2 size={26} className="spinner" style={{ color: "var(--accent-primary)" }} aria-hidden />
+                <span>Generating your landing page…</span>
               </div>
             ) : (
               <iframe ref={iframeRef} srcDoc={gen.html} sandbox="allow-scripts" style={{ width: "100%", height: "100%", border: "none", display: "block" }} title="Landing page preview" />
@@ -1012,21 +886,16 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
           </div>
 
           {gen.status === "done" && (
-            <button
-              onClick={() => { const blob = new Blob([gen.html], { type: "text/html" }); const blobUrl = URL.createObjectURL(blob); window.open(blobUrl, "_blank", "noopener,noreferrer"); setTimeout(() => URL.revokeObjectURL(blobUrl), 30000); }}
-              style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "11px 0", borderRadius: 10, border: "1.5px solid var(--accent-primary)", background: "rgba(90,200,214,0.08)", color: "var(--accent-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(90,200,214,0.16)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(90,200,214,0.08)"; }}
-            >
-              <ExternalLink size={14} strokeWidth={2} /> Open in New Tab
+            <button type="button" className="btn-secondary glass-inner" style={{ width: "100%", minHeight: 48, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => openInTab(gen.html)}>
+              <ExternalLink size={15} strokeWidth={2} aria-hidden /> Open in new tab
             </button>
           )}
-        </div>
+        </section>
       )}
 
       {/* Gallery */}
       {pages.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        <div className="studio-gallery" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
           {pages.map(page => (
             <LandingPageCard
               key={page.id} page={page} uid={uid}
@@ -1038,40 +907,26 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
         </div>
       )}
 
-      {/* Fullscreen preview modal */}
+      {/* Fullscreen preview */}
       {previewPage && previewPage.html && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
+        <div role="dialog" aria-modal="true" aria-label="Landing page preview" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(5,6,10,0.88)", display: "flex", flexDirection: "column" }}>
+          <div className="lp-fs-head">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Globe size={14} strokeWidth={1.8} style={{ color: "var(--accent-primary)" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                {previewPage.copyframe} — {previewPage.createdAt}
-              </span>
+              <Globe size={16} strokeWidth={1.8} style={{ color: "var(--accent-primary)" }} aria-hidden />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{previewPage.copyframe} · {previewPage.createdAt}</span>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => { const blob = new Blob([previewPage.html], { type: "text/html" }); const blobUrl = URL.createObjectURL(blob); window.open(blobUrl, "_blank", "noopener,noreferrer"); setTimeout(() => URL.revokeObjectURL(blobUrl), 30000); }}
-                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <ExternalLink size={12} strokeWidth={2} /> Open in tab
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button type="button" className="chip" onClick={() => openInTab(previewPage.html)}>
+                <ExternalLink size={14} aria-hidden /> Open in tab
               </button>
-              <button
-                onClick={() => downloadHtml(previewPage.html, `lp-${previewPage.createdAt.replace(/\s+/g, "-").toLowerCase()}.html`)}
-                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <Download size={12} strokeWidth={2} /> HTML
+              <button type="button" className="chip" onClick={() => downloadHtml(previewPage.html, `lp-${previewPage.createdAt.replace(/\s+/g, "-").toLowerCase()}.html`)}>
+                <Download size={14} aria-hidden /> HTML
               </button>
-              <button
-                onClick={() => { openYouCan(previewPage.html); setPreviewPage(null); }}
-                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent-primary)", background: "rgba(90,200,214,0.10)", color: "var(--accent-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <Download size={12} strokeWidth={2} /> YouCan
+              <button type="button" className="chip" onClick={() => { openYouCan(previewPage.html); setPreviewPage(null); }}>
+                <Download size={14} aria-hidden /> YouCan
               </button>
-              <button
-                onClick={() => setPreviewPage(null)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <X size={14} strokeWidth={2} />
+              <button type="button" className="chip" style={{ width: 40, padding: 0, justifyContent: "center" }} aria-label="Close preview" onClick={() => setPreviewPage(null)}>
+                <X size={16} aria-hidden />
               </button>
             </div>
           </div>
@@ -1081,67 +936,50 @@ export function LandingPageStudio({ project, uid }: { project: Project; uid: str
 
       {/* YouCan export modal */}
       {youCanOpen && youCanData && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ width: "100%", maxWidth: 700, background: "var(--bg-base)", borderRadius: "var(--r-card)", border: "1px solid var(--border-default)", boxShadow: "var(--card-shadow)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
-            {/* Modal header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--hairline)" }}>
+        <div className="lp-modal-overlay" onClick={() => setYouCanOpen(false)}>
+          <div className="glass" role="dialog" aria-modal="true" aria-labelledby="youcan-title" onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 720, borderRadius: 28, padding: 24, display: "flex", flexDirection: "column", gap: 18, maxHeight: "90vh", overflow: "hidden", background: "var(--glass-strong)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>YouCan Export</div>
-                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+                <h3 id="youcan-title" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>YouCan export</h3>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>
                   Parameters → Content → Custom code → paste each field below
-                </div>
+                </p>
               </div>
-              <button
-                onClick={() => setYouCanOpen(false)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <X size={14} strokeWidth={2} />
+              <button type="button" className="glass-inner icon-chip" aria-label="Close" style={{ width: 40, height: 40, borderRadius: 14, flex: "none" }} onClick={() => setYouCanOpen(false)}>
+                <X size={16} aria-hidden />
               </button>
             </div>
 
-            {/* Modal body */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px", display: "grid", gap: 18 }}>
-              {/* CSS field */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>Custom CSS content</span>
-                  <CopyButton text={youCanData.css} />
+            <div style={{ flex: 1, overflowY: "auto", display: "grid", gap: 18 }}>
+              {([
+                { label: "Custom CSS content",    value: youCanData.css },
+                { label: "Custom script content", value: youCanData.scriptHtml },
+              ]).map(({ label, value }) => (
+                <div key={label} className="studio-field">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <span className="field-label">{label}</span>
+                    <CopyButton text={value} />
+                  </div>
+                  <textarea
+                    readOnly
+                    className="input-well"
+                    aria-label={label}
+                    value={value}
+                    style={{ height: 180, borderRadius: 18, padding: "12px 14px", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, lineHeight: 1.5, resize: "vertical" }}
+                  />
                 </div>
-                <textarea
-                  readOnly
-                  value={youCanData.css}
-                  style={{ width: "100%", height: 180, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-subtle)", color: "var(--text-secondary)", fontSize: 11, fontFamily: "monospace", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }}
-                />
-              </div>
-
-              {/* Script / HTML field */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>Custom script content</span>
-                  <CopyButton text={youCanData.scriptHtml} />
-                </div>
-                <textarea
-                  readOnly
-                  value={youCanData.scriptHtml}
-                  style={{ width: "100%", height: 180, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-subtle)", color: "var(--text-secondary)", fontSize: 11, fontFamily: "monospace", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }}
-                />
-              </div>
+              ))}
             </div>
 
-            {/* Modal footer */}
-            <div style={{ padding: "12px 20px", borderTop: "1px solid var(--hairline)", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setYouCanOpen(false)}
-                style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--chip)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-              >
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn-secondary glass-inner" style={{ width: "auto", minHeight: 44, padding: "0 22px" }} onClick={() => setYouCanOpen(false)}>
                 Close
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <InsufficientCreditsModal
         open={creditModalOpen}

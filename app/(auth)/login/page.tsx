@@ -2,7 +2,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata = {
-  title: "Sign In — AIOPT",
+  title: "Sign In — POLARIS SM",
 };
 
 export default function LoginPage() {
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p style={{ marginTop: 24, fontSize: 12, color: "var(--text-tertiary)", textAlign: "center" }}>
-          © {new Date().getFullYear()} AIOPT · Built for MENA E-commerce
+          © {new Date().getFullYear()} POLARIS SM · Built for MENA E-commerce
         </p>
       </div>
     </main>

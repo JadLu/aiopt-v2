@@ -19,7 +19,7 @@ function getOwnerStyle(owner: string): { bg: string; color: string } {
   const key = owner.toLowerCase();
   if (key.includes("creative") || key.includes("design")) return { bg: "color-mix(in srgb, var(--accent-primary) 14%, transparent)", color: "var(--accent-primary)" };
   if (key.includes("ads") || key.includes("media") || key.includes("paid"))    return { bg: "color-mix(in srgb, var(--accent-secondary) 14%, transparent)", color: "var(--accent-secondary)" };
-  if (key.includes("landing") || key.includes("web") || key.includes("dev"))   return { bg: "color-mix(in srgb, #C084FC 14%, transparent)", color: "#C084FC" };
+  if (key.includes("landing") || key.includes("web") || key.includes("dev"))   return { bg: "color-mix(in srgb, var(--accent-violet) 14%, transparent)", color: "var(--accent-violet)" };
   if (key.includes("cro") || key.includes("conversion"))                       return { bg: "color-mix(in srgb, var(--warning) 14%, transparent)", color: "var(--warning)" };
   if (key.includes("ops") || key.includes("operation") || key.includes("logistic")) return { bg: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" };
   return { bg: "var(--chip)", color: "var(--text-secondary)" };
@@ -41,7 +41,12 @@ export function ActionVisual({ data, onRegenerate }: ActionVisualProps) {
   }
 
   const toggle = (i: number) =>
-    setChecked((prev) => { const next = new Set(prev); next.has(i) ? next.delete(i) : next.add(i); return next; });
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

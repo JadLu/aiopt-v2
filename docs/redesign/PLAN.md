@@ -1,4 +1,4 @@
-# AIOPT v2 — Redesign & hardening plan (for Claude Code in VS Code)
+# POLARIS SM v2 — Redesign & hardening plan (for Claude Code in VS Code)
 
 Do one phase per Claude Code conversation. Start each phase with `/plan`, read the plan, approve it, then test in the browser (`pnpm dev`), run `pnpm build` and `pnpm lint`, and **commit before moving on**.
 

@@ -1,4 +1,4 @@
-# AIOPT v2 — Liquid Glass design spec
+# POLARIS SM v2 — Liquid Glass design spec
 
 Reference mockups: `docs/redesign/mockups/*.dc.html`. Open them in a browser to view, or read them for exact values.
 (They use a mockup format with `{{…}}` placeholders and `<sc-for>` loops. Treat these as pseudo-code; copy the **styles**, not the markup format.)
@@ -14,8 +14,14 @@ Frosted glass panels floating over soft coloured light, with bright light-catchi
 |---|---|---|---|
 | `--bg-app` | `#05060A` | `#EEF1F6` | page background under the blobs |
 | `--text-primary` | `#F4F6FA` | `#0E1320` | |
-| `--text-secondary` | `rgba(235,240,255,.62)` | `rgba(14,19,32,.62)` | must keep 4.5:1 contrast |
-| `--accent-primary` | `#7FE7F5` | `#0A6F87` | links, active icons (light uses the darker teal for contrast) |
+| `--text-secondary` | `rgba(235,240,255,.62)` | `rgba(14,19,32,.70)` | must keep 4.5:1 contrast (light was .62 in the first draft; .70 is what passes over a blob) |
+| `--accent-primary` | `#7FE7F5` | `#085F74` | links, active icons (light uses a darker teal: `#0A6F87` measured 4.43:1 over glass on a blob) |
+| `--text-tertiary` | `#6E6E73` | `#4E5668` | helper text, meta lines |
+| `--accent-secondary`, `--success`, `--warning`, `--danger` | brand values | `#0C5A92`, `#15603A`, `#744200`, `#A61F16` | used for text and badges, so the light values are darkened to ≥ 4.5:1 |
+| `--on-accent` | `#03141B` | `#FFFFFF` | text on a solid `--accent-primary` fill |
+| `--accent-violet`, `--star` | `#C084FC`, `#E8A93B` | `#5F2FB5`, `#A86400` | violet labels and the starred-angle icon |
+
+Light contrast is measured against the **worst** background: the thinnest glass (42% white) over the indigo blob (`#D8E1FC`), not the flat page colour.
 | `--glass` | `linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.045) 42%, rgba(255,255,255,.025))` | `linear-gradient(160deg, rgba(255,255,255,.78), rgba(255,255,255,.52) 45%, rgba(255,255,255,.42))` | panel fill |
 | `--glass-inner` | `rgba(255,255,255,.055)` | `rgba(255,255,255,.55)` | nested chips, inner tiles |
 | `--glass-rim` | `linear-gradient(135deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 30%, transparent 55%, rgba(255,255,255,.06) 75%, rgba(255,255,255,.3))` | `linear-gradient(135deg, #fff, rgba(255,255,255,.5) 30%, rgba(255,255,255,.15) 55%, rgba(180,195,225,.35) 80%, rgba(255,255,255,.9))` | 1px gradient border (see §3) |
@@ -43,6 +49,11 @@ Radii: inputs/chips `14px`, small tiles `16–20px`, cards `24–28px`, dialog `
 - **`.ambient`**: 3–4 absolutely-positioned blurred radial gradients (`--blob-*`), each 600–850px, with `filter: blur(30–40px)`, placed top-right, bottom-left, centre and bottom-right.
 - **Motion**: hover lift `translateY(-3px)` over 250ms `cubic-bezier(.2,.8,.2,1)`, and a shimmer skeleton for loading. The existing reduced-motion rule must still apply.
 
+Also: `.import-panel` (+ `.import-badge`) is the cyan-tinted "Start from a product link" box in the New Project dialog, and `.or-divider` the "Or fill in manually" rule under it.
+
+## Brand assets
+Source sheet: `Logo.jpeg` (repo root). Generated from it: `app/icon.png`, `app/apple-icon.png` and `app/favicon.ico` (Next.js picks these up automatically), `public/logo-icon.png` (app-icon tile, used on the sign-in page via `.brand-mark`), and `public/brand/` (`logo-vertical.png`, `logo-horizontal.png` with transparent backgrounds, `icon-192.png`, `icon-512.png`). The lockups use dark navy text, so use them on light backgrounds only; on dark surfaces use the icon tile plus live text.
+
 ## 4. Type
 - Latin UI: **Inter Tight** (400/500/600/700). Arabic: **Cairo**. Stack: `"Inter Tight", "Cairo", system-ui, sans-serif`. Load both via `next/font/google`.
 - Numbers: `font-variant-numeric: tabular-nums`.
@@ -50,7 +61,7 @@ Radii: inputs/chips `14px`, small tiles `16–20px`, cards `24–28px`, dialog `
 - Any user or AI-generated text uses `dir="auto"`. Arabic option chips use `dir="rtl"` and the Cairo font.
 
 ## 5. Rules
-- Blur (`backdrop-filter`) only on large surfaces: sidebar, cards, dialogs and the top bar. Never on chips or list items, because it lags older laptops.
+- Blur (`backdrop-filter`) only on large surfaces: cards, dialogs and the profile widget. Never on chips or list items, because it lags older laptops.
 - Red and green are for status only. Cyan is the only accent.
 - Every empty state shows the one next action, never a bare "—".
 - Touch targets are ≥ 40px tall, and icon-only buttons have an `aria-label`.

@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Play, Layers, Image, Film, FileText, Monitor } from "lucide-react";
+import { Sparkles, Play, Layers, Image as ImageIcon, Film, FileText, Monitor } from "lucide-react";
 import type { ContentData } from "@/lib/mock-data";
 
 interface ContentVisualProps {
@@ -22,7 +22,7 @@ function getFormatIcon(type: string) {
   if (t.includes("carousel") || t.includes("slide"))
     return <Layers size={14} strokeWidth={1.9} />;
   if (t.includes("static") || t.includes("image") || t.includes("photo"))
-    return <Image size={14} strokeWidth={1.9} />;
+    return <ImageIcon size={14} strokeWidth={1.9} />;
   if (t.includes("story") || t.includes("stories"))
     return <Film size={14} strokeWidth={1.9} />;
   if (t.includes("landing") || t.includes("page"))
@@ -33,7 +33,7 @@ function getFormatIcon(type: string) {
 const CHIP_COLORS = [
   "var(--accent-primary)",
   "var(--accent-secondary)",
-  "#C084FC",
+  "var(--accent-violet)",
   "var(--warning)",
   "var(--success)",
 ];

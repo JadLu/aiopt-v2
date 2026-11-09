@@ -3,7 +3,6 @@
 import {
   collection,
   addDoc,
-  getDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -21,9 +20,10 @@ const EMOJI_POOL = ["📦", "🛍️", "💄", "📱", "🎮", "👟", "🏋️"
 export interface CreateProjectInput {
   name: string;
   description: string;
+  /** Display names joined, e.g. "Libya, Egypt" (kept for prompts and older code). */
   country: string;
-  targetCpa: number;
-  targetRoas: number;
+  /** ISO codes of the target markets. */
+  countries: string[];
 }
 
 function docToProject(id: string, d: Record<string, unknown>): Project {
@@ -34,12 +34,9 @@ function docToProject(id: string, d: Record<string, unknown>): Project {
     emoji: d.emoji as string,
     status: d.status as Project["status"],
     country: d.country as string,
-    targetCpa: (d.targetCpa as number) ?? 0,
-    targetRoas: (d.targetRoas as number) ?? 0,
-    healthIndex: (d.healthIndex as number) ?? 0,
-    cpa: (d.cpa as number) ?? 0,
-    roas: (d.roas as number) ?? 0,
-    spend: (d.spend as number) ?? 0,
+    countries: Array.isArray(d.countries)
+      ? (d.countries as unknown[]).filter((x): x is string => typeof x === "string")
+      : undefined,
     lastActivity: (d.lastActivity as { toDate?: () => Date })?.toDate
       ? formatRelativeTime((d.lastActivity as { toDate: () => Date }).toDate())
       : "just now",
@@ -65,6 +62,10 @@ function docToProject(id: string, d: Record<string, unknown>): Project {
     })(),
     productImageUrl: d.productImageUrl as string | undefined,
     marketingAngle: d.marketingAngle as string | undefined,
+    selectedAngle: typeof d.selectedAngle === "number" ? d.selectedAngle : undefined,
+    planDraft: d.planDraft && typeof d.planDraft === "object" ? (d.planDraft as PlanVisualData) : undefined,
+    marketingPlanStatus: d.marketingPlanStatus as Project["marketingPlanStatus"],
+    marketingPlanError: d.marketingPlanError as string | undefined,
   };
 }
 
@@ -79,12 +80,7 @@ export async function createProject(uid: string, input: CreateProjectInput): Pro
     emoji,
     status: "in-draft",
     country: input.country,
-    targetCpa: input.targetCpa,
-    targetRoas: input.targetRoas,
-    healthIndex: 0,
-    cpa: 0,
-    roas: 0,
-    spend: 0,
+    countries: input.countries,
     lastActivity: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
@@ -100,20 +96,13 @@ export async function deleteProject(uid: string, projectId: string): Promise<voi
 export async function updateProject(
   uid: string,
   projectId: string,
-  data: Partial<{ marketingPlan: string; marketAnalysisData: MarketAnalysisData | null; planVisualData: PlanVisualData | null; productImageUrl: string; status: Project["status"]; marketingAngle: string }>
+  data: Partial<{ marketingPlan: string; marketAnalysisData: MarketAnalysisData | null; planVisualData: PlanVisualData | null; productImageUrl: string; status: Project["status"]; marketingAngle: string; selectedAngle: number }>
 ): Promise<void> {
   const db = getFirebaseFirestore();
   await updateDoc(doc(db, "users", uid, "projects", projectId), {
     ...data,
     lastActivity: serverTimestamp(),
   });
-}
-
-export async function getProject(uid: string, projectId: string): Promise<Project | null> {
-  const db = getFirebaseFirestore();
-  const snap = await getDoc(doc(db, "users", uid, "projects", projectId));
-  if (!snap.exists()) return null;
-  return docToProject(snap.id, snap.data() as Record<string, unknown>);
 }
 
 export function subscribeToProject(

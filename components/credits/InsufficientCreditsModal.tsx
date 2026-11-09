@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Zap } from "lucide-react";
-import { CREDIT_COSTS, videoCreditCost } from "@/lib/firebase/credits";
+import { CREDIT_COSTS, videoCreditCost } from "@/lib/credit-costs";
 
 interface Props {
   open: boolean;
@@ -10,10 +10,11 @@ interface Props {
   balance: number;
 }
 
-const PRICING_ROWS: { label: string; cost: number }[] = [
+export const PRICING_ROWS: { label: string; cost: number }[] = [
   { label: "Marketing Plan", cost: CREDIT_COSTS.MARKETING_PLAN },
   { label: "Photo (image)", cost: CREDIT_COSTS.PHOTO },
   { label: "Landing Page", cost: CREDIT_COSTS.LANDING_PAGE },
+  { label: "Regenerate one angle", cost: CREDIT_COSTS.ANGLE },
   { label: "Video 5s / 6s", cost: videoCreditCost("5s") },
   { label: "Video 8s", cost: videoCreditCost("8s") },
   { label: "Video 10s", cost: videoCreditCost("10s") },

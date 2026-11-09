@@ -8,6 +8,8 @@ interface MarketAnalysisVisualProps {
   data: MarketAnalysisData | null | undefined;
   onRegenerate: () => void;
   onAddAngle?: (angle: { name: string; size: string; traits: string[] }) => void;
+  /** Hide the built-in angle cards (the project page renders them as their own section). */
+  hideSegments?: boolean;
 }
 
 const COMPETITION_COLOR: Record<string, string> = {
@@ -19,7 +21,7 @@ const COMPETITION_COLOR: Record<string, string> = {
 const PRIORITY_COLOR: Record<string, string> = {
   primary: "var(--accent-primary)",
   secondary: "var(--accent-secondary)",
-  tertiary: "#C084FC",
+  tertiary: "var(--accent-violet)",
 };
 
 function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub?: string }) {
@@ -59,7 +61,7 @@ function Bar({ pct, color = "var(--accent-primary)", height = 8 }: { pct: number
 
 const EMPTY_FORM = { name: "", size: "", traits: ["", "", ""] as [string, string, string] };
 
-export function MarketAnalysisVisual({ data, onRegenerate, onAddAngle }: MarketAnalysisVisualProps) {
+export function MarketAnalysisVisual({ data, onRegenerate, onAddAngle, hideSegments = false }: MarketAnalysisVisualProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<{ name: string; size: string; traits: [string, string, string] }>(EMPTY_FORM);
 
@@ -108,7 +110,7 @@ export function MarketAnalysisVisual({ data, onRegenerate, onAddAngle }: MarketA
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
         {/* Marketing Angle */}
-        {(segments.length > 0 || onAddAngle) && (
+        {!hideSegments && (segments.length > 0 || onAddAngle) && (
           <div style={{ background: "var(--chip)", border: "1px solid var(--hairline)", borderRadius: 12, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: ".06em" }}>Marketing Angle</div>

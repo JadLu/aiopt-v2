@@ -2,14 +2,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // All app data lives under users/{userId}/** — only the owning user can read/write.
-    // This covers projects, creatives, ai-creatives, ai-videos, video-clips,
-    // rendered-videos, ai-landing-pages, meta-accounts, meta-campaigns,
-    // ad-alerts, alert-rules, and credits subcollections.
-    match /users/{userId}/{document=**} {
+    // users/{uid} holds the credit balance. The owner may READ it but never
+    // write it — credits are changed only by the server (Admin SDK bypasses
+    // these rules). NOTE: a `users/{userId}/{document=**}` wildcard would also
+    // match this document, so the subcollections are listed explicitly below.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Server-managed async job records (charge + refund bookkeeping).
+    // Clients can read their own, never write.
+    match /users/{userId}/jobs/{jobId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // In-app notifications are written by the server only. The owner can read
+    // them, flip `read`, and delete (dismiss) them, nothing else.
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if false;
+    }
+
+    // All user content lives under users/{userId}/projects/** (creatives,
+    // ai-creatives, ai-videos, video-clips, rendered-videos, ai-landing-pages).
+    // Only the owning user can read/write.
+    match /users/{userId}/projects/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Block everything else by default (implicit deny).
+    // Everything else (including top-level rateLimits/*) is denied to clients.
+    // Server code uses the Admin SDK, which is not subject to these rules.
   }
 }

@@ -3,13 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Sparkles, Download, AlertCircle, MoreVertical, Trash2, X,
-  ImageIcon, Video, Globe,
+  ImageIcon, Video, Globe, Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { authFetch } from "@/lib/auth-fetch";
-import { deductCredits, refundCredits, CREDIT_COSTS } from "@/lib/firebase/credits";
+import { authFetch, readApiError, downloadViaProxy } from "@/lib/auth-fetch";
+import { CREDIT_COSTS } from "@/lib/credit-costs";
 import { InsufficientCreditsModal } from "@/components/credits/InsufficientCreditsModal";
 import { CreditTooltip } from "@/components/credits/CreditTooltip";
+import { LiquidButton } from "@/components/ui/liquid-button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { CriteriaPicker, PromptEditor } from "./studio-parts";
 import { VideoStudio } from "./video-studio";
 import { LandingPageStudio } from "./landing-page-studio";
 import {
@@ -100,7 +103,7 @@ function defaultCriteria(project: Project): CriteriaState {
   const chs = vd?.channels?.channels ?? [];
   const primaryIdx = chs.findIndex(c => c.primary);
   return {
-    segmentIdx: vd?.market?.segments?.length  ? 0 : null,
+    segmentIdx: vd?.market?.segments?.length  ? Math.min(project.selectedAngle ?? 0, vd.market.segments.length - 1) : null,
     channelIdx: chs.length ? (primaryIdx >= 0 ? primaryIdx : 0) : null,
     pillarIdx:  vd?.content?.pillars?.length  ? 0 : null,
     hookIdx:    vd?.content?.hooks?.length    ? 0 : null,
@@ -175,22 +178,6 @@ const INITIAL_GEN: GenState = {
   prompt: "", aspectRatio: "4:5", resolution: "2K",
 };
 
-// ─── Recursive URL extractor ──────────────────────────────────────────────────
-
-function findUrl(node: unknown): string | null {
-  if (typeof node === "string" && node.startsWith("http")) return node;
-  if (Array.isArray(node)) {
-    for (const item of node) { const u = findUrl(item); if (u) return u; }
-  }
-  if (node && typeof node === "object") {
-    const obj = node as Record<string, unknown>;
-    for (const key of ["imageUrl", "image_url", "url", "imageUrls", "images", "urls", "result", "output"]) {
-      const u = findUrl(obj[key]); if (u) return u;
-    }
-    for (const v of Object.values(obj)) { const u = findUrl(v); if (u) return u; }
-  }
-  return null;
-}
 
 function parseKieResponse(raw: Record<string, unknown>): {
   isDone: boolean; isFailed: boolean; url: string | null;
@@ -275,6 +262,12 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
         }
         try {
           const res = await authFetch(`/api/generate-creative/status?taskId=${taskId}`);
+          if (res.status === 404) {
+            clearInterval(iv);
+            active.delete(creativeId);
+            await failAiCreative(uid, project.id, creativeId);
+            return;
+          }
           const raw = await res.json() as Record<string, unknown>;
           const { isDone, isFailed, url } = parseKieResponse(raw);
 
@@ -320,16 +313,11 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   async function handleGenerate() {
     if (!gen.prompt.trim()) return;
 
-    const result = await deductCredits(uid, CREDIT_COSTS.PHOTO);
-    if (!result.success) {
-      setCreditModalOpen(true);
-      return;
-    }
-
     setGen(g => ({ ...g, status: "submitting", error: null, imageUrl: null, taskId: null }));
     try {
       const styleSuffix = imageStyle ? `\n\nStyle direction: ${IMAGE_STYLE_PROMPTS[imageStyle]}` : "";
       const body: Record<string, unknown> = {
+        projectId:   project.id,
         prompt:      gen.prompt + styleSuffix,
         aspectRatio: gen.aspectRatio,
         resolution:  gen.resolution,
@@ -340,10 +328,19 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as { taskId?: string; error?: string };
-      if (!res.ok || !data.taskId) {
-        await refundCredits(uid, CREDIT_COSTS.PHOTO);
-        setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: data.error ?? "Failed to start generation." }));
+      if (res.status === 402) {
+        setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution }));
+        setCreditModalOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        const message = await readApiError(res, "Failed to start generation.");
+        setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: message }));
+        return;
+      }
+      const data = await res.json() as { taskId?: string };
+      if (!data.taskId) {
+        setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: "Failed to start generation." }));
         return;
       }
 
@@ -359,7 +356,6 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
       pendingDocRef.current = docId;
       setGen(g => ({ ...g, status: "polling", taskId: data.taskId! }));
     } catch {
-      await refundCredits(uid, CREDIT_COSTS.PHOTO);
       setGen(g => ({ ...INITIAL_GEN, prompt: g.prompt, aspectRatio: g.aspectRatio, resolution: g.resolution, error: "Network error. Please try again." }));
     }
   }
@@ -377,30 +373,18 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
   return (
     <div style={{ display: "grid", gap: 20 }}>
 
-      {/* Sub-tabs */}
-      <div style={{ display: "flex", gap: 4 }}>
-        {([
-          { key: "images"       as const, label: "Images",        icon: ImageIcon },
-          { key: "videos"       as const, label: "Videos",        icon: Video },
-          { key: "landing-page" as const, label: "Landing Pages", icon: Globe },
-        ]).map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setCreativeTab(key)}
-            style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 16px", borderRadius: 10, fontSize: 13,
-              border: `1px solid ${creativeTab === key ? "var(--accent-primary)" : "var(--border-default)"}`,
-              background: creativeTab === key ? "color-mix(in srgb, var(--accent-primary) 10%, transparent)" : "var(--bg-elevated)",
-              color: creativeTab === key ? "var(--accent-primary)" : "var(--text-secondary)",
-              fontWeight: creativeTab === key ? 600 : 400,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s",
-            }}
-          >
-            <Icon size={13} strokeWidth={1.8} /> {label}
-          </button>
-        ))}
-      </div>
+      {/* Studio tabs */}
+      <SegmentedControl
+        ariaLabel="Creative type"
+        className="studio-tabs"
+        value={creativeTab}
+        onChange={setCreativeTab}
+        options={[
+          { value: "images",       label: "Images",        icon: <ImageIcon size={15} strokeWidth={1.8} aria-hidden /> },
+          { value: "videos",       label: "Videos",        icon: <Video size={15} strokeWidth={1.8} aria-hidden /> },
+          { value: "landing-page", label: "Landing Pages", icon: <Globe size={15} strokeWidth={1.8} aria-hidden /> },
+        ]}
+      />
 
       {creativeTab === "videos" && (
         <VideoStudio project={project} uid={uid} />
@@ -412,195 +396,100 @@ export function CreativeStudio({ project, uid }: CreativeStudioProps) {
 
       {creativeTab === "images" && (<>
 
-      {/* Generator card */}
-      <div className="glass-card" style={{ overflow: "hidden", padding: 0 }}>
-        {showPrompt && (
-          <>
-            <textarea
-              value={gen.prompt}
-              onChange={e => setGen(g => ({ ...g, prompt: e.target.value }))}
+      {/* Generator */}
+      <section className="glass studio-card" aria-label="Image generator">
+        <CriteriaPicker
+          project={project}
+          criteria={criteria}
+          disabled={isGenerating}
+          onChange={updateCriteria}
+          onAngleText={val => {
+            setCriteria(prev => {
+              const next = { ...prev, angleText: val };
+              setGen(g => ({ ...g, prompt: buildPromptFromCriteria(project, next) }));
+              return next;
+            });
+          }}
+          onAngleBlur={() => {
+            const saved = project.marketingAngle ?? "";
+            if (criteria.angleText !== saved) {
+              updateProject(uid, project.id, { marketingAngle: criteria.angleText });
+            }
+          }}
+        />
+
+        <PromptEditor
+          id="image-prompt"
+          open={showPrompt}
+          onToggle={() => setShowPrompt(s => !s)}
+          value={gen.prompt}
+          onChange={v => setGen(g => ({ ...g, prompt: v }))}
+          disabled={isGenerating}
+          placeholder="Describe the creative you want to generate…"
+        />
+
+        <hr className="studio-divider" />
+
+        {/* Options + generate */}
+        <div className="studio-controls">
+          <div className="studio-control">
+            <span className="field-label">Aspect</span>
+            <SegmentedControl
+              ariaLabel="Aspect ratio"
               disabled={isGenerating}
-              placeholder="Describe the creative you want to generate…"
-              style={{
-                width: "100%", padding: "16px 18px",
-                background: "transparent", border: "none", outline: "none",
-                fontSize: 14, color: "var(--text-primary)",
-                fontFamily: "inherit", lineHeight: 1.65, resize: "none",
-                boxSizing: "border-box", minHeight: 100,
-                opacity: isGenerating ? 0.55 : 1,
-              }}
+              value={gen.aspectRatio as typeof IMAGE_ASPECT_RATIOS[number]}
+              onChange={ratio => setGen(g => ({ ...g, aspectRatio: ratio }))}
+              options={IMAGE_ASPECT_RATIOS.map(r => ({ value: r, label: r }))}
             />
-            <div style={{ height: 1, background: "var(--hairline)" }} />
-          </>
-        )}
-
-        {/* Criteria from marketing plan */}
-        {project.planVisualData && (() => {
-          const vd   = project.planVisualData!;
-          const segs = vd.market?.segments   ?? [];
-          const chs  = vd.channels?.channels ?? [];
-          const plrs = vd.content?.pillars   ?? [];
-          const hks  = vd.content?.hooks     ?? [];
-          if (!segs.length && !chs.length && !plrs.length && !hks.length) return null;
-          const pill = (active: boolean, wide?: boolean) => ({
-            padding: "5px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: `1px solid ${active ? "var(--accent-primary)" : "var(--border-default)"}`,
-            background: active ? "color-mix(in srgb, var(--accent-primary) 12%, transparent)" : "transparent",
-            color: active ? "var(--accent-primary)" : "var(--text-secondary)",
-            cursor: "pointer" as const, fontFamily: "inherit" as const, transition: "all 0.13s",
-            opacity: isGenerating ? 0.5 : 1,
-            maxWidth: wide ? 220 : 180, overflow: "hidden" as const,
-            textOverflow: "ellipsis" as const, whiteSpace: "nowrap" as const,
-          });
-          return (
-            <div style={{ padding: "10px 18px 12px", borderBottom: "1px solid var(--hairline)", display: "flex", flexDirection: "column", gap: 8 }}>
-              {segs.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", width: 90, flexShrink: 0 }}>MKT. ANGLE</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {segs.map((s, i) => <button key={i} disabled={isGenerating} onClick={() => updateCriteria({ segmentIdx: criteria.segmentIdx === i ? null : i })} style={pill(criteria.segmentIdx === i)}>{s.name}</button>)}
-                  </div>
-                </div>
-              )}
-              {chs.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", width: 90, flexShrink: 0 }}>CHANNEL</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {chs.map((c, i) => <button key={i} disabled={isGenerating} onClick={() => updateCriteria({ channelIdx: criteria.channelIdx === i ? null : i })} style={pill(criteria.channelIdx === i)}>{c.name}</button>)}
-                  </div>
-                </div>
-              )}
-              {plrs.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", width: 90, flexShrink: 0 }}>PILLAR</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {plrs.map((p, i) => <button key={i} disabled={isGenerating} onClick={() => updateCriteria({ pillarIdx: criteria.pillarIdx === i ? null : i })} style={pill(criteria.pillarIdx === i)}>{p.name}</button>)}
-                  </div>
-                </div>
-              )}
-              {hks.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", width: 90, flexShrink: 0 }}>HOOK</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {hks.map((h, i) => <button key={i} disabled={isGenerating} onClick={() => updateCriteria({ hookIdx: criteria.hookIdx === i ? null : i })} style={pill(criteria.hookIdx === i, true)}>{h.length > 32 ? h.slice(0, 30) + "…" : h}</button>)}
-                  </div>
-                </div>
-              )}
-              {/* Marketing Angle — free-text, saved to Firestore on blur */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase", width: 90, flexShrink: 0, paddingTop: 8 }}>CUSTOM</span>
-                <textarea
-                  value={criteria.angleText}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setCriteria(prev => {
-                      const next = { ...prev, angleText: val };
-                      setGen(g => ({ ...g, prompt: buildPromptFromCriteria(project, next) }));
-                      return next;
-                    });
-                  }}
-                  onBlur={() => {
-                    const saved = project.marketingAngle ?? "";
-                    if (criteria.angleText !== saved) {
-                      updateProject(uid, project.id, { marketingAngle: criteria.angleText });
-                    }
-                  }}
-                  disabled={isGenerating}
-                  placeholder="Add your own marketing angle… (e.g. 'Focus on post-workout recovery pain relief')"
-                  rows={2}
-                  style={{
-                    flex: 1, padding: "7px 10px",
-                    background: "var(--bg-subtle)", border: "1px solid var(--border-default)",
-                    borderRadius: 8, fontSize: 12.5, color: "var(--text-primary)",
-                    fontFamily: "inherit", resize: "none", outline: "none", lineHeight: 1.5,
-                    opacity: isGenerating ? 0.5 : 1, transition: "border-color 0.13s",
-                  }}
-                  onFocus={e => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
-                  onBlurCapture={e => { e.currentTarget.style.borderColor = "var(--border-default)"; }}
-                />
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Controls row */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 16,
-          padding: "10px 18px 14px",
-          flexWrap: "wrap",
-        }}>
-          {/* Prompt toggle */}
-          <button
-            onClick={() => setShowPrompt(s => !s)}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid var(--border-default)", background: showPrompt ? "color-mix(in srgb, var(--accent-primary) 10%, transparent)" : "transparent", color: showPrompt ? "var(--accent-primary)" : "var(--text-tertiary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", flexShrink: 0 }}
-          >
-            <span style={{ fontSize: 11 }}>{showPrompt ? "▲" : "▼"}</span> Prompt
-          </button>
-
-          {/* ASPECT */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>ASPECT</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {IMAGE_ASPECT_RATIOS.map(ratio => (
-                <button key={ratio}
-                  onClick={() => setGen(g => ({ ...g, aspectRatio: ratio }))}
-                  disabled={isGenerating}
-                  style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${gen.aspectRatio === ratio ? "var(--accent-primary)" : "var(--border-default)"}`, background: gen.aspectRatio === ratio ? "color-mix(in srgb, var(--accent-primary) 12%, transparent)" : "transparent", color: gen.aspectRatio === ratio ? "var(--accent-primary)" : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1 }}
-                >{ratio}</button>
-              ))}
-            </div>
           </div>
 
-          {/* STYLE */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: ".06em", textTransform: "uppercase" }}>STYLE</span>
-            <div style={{ display: "flex", gap: 4 }}>
+          <div className="studio-control" role="group" aria-label="Style">
+            <span className="field-label">Style</span>
+            <div className="studio-chips">
               {IMAGE_STYLES.map(style => (
-                <button key={style}
-                  onClick={() => setImageStyle(s => s === style ? null : style)}
+                <button
+                  key={style}
+                  type="button"
+                  className="chip"
+                  aria-pressed={imageStyle === style}
                   disabled={isGenerating}
-                  style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${imageStyle === style ? "var(--accent-primary)" : "var(--border-default)"}`, background: imageStyle === style ? "color-mix(in srgb, var(--accent-primary) 12%, transparent)" : "transparent", color: imageStyle === style ? "var(--accent-primary)" : "var(--text-secondary)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.13s", opacity: isGenerating ? 0.5 : 1 }}
-                >{style}</button>
+                  onClick={() => setImageStyle(s => (s === style ? null : style))}
+                >
+                  {style}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Model + Generate */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)", display: "inline-block", flexShrink: 0 }} />
+          <div className="studio-spacer">
+            <span className="stat-chip">
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)", flex: "none" }} />
               nano-banana-2
             </span>
             <CreditTooltip cost={CREDIT_COSTS.PHOTO}>
-              <button
-                className="btn-primary"
-                style={{ width: "auto", padding: "8px 18px", fontSize: 13, opacity: (!gen.prompt.trim() || isGenerating) ? 0.6 : 1 }}
+              <LiquidButton
+                icon={<Sparkles size={16} fill="currentColor" aria-hidden />}
+                loading={isGenerating}
+                disabled={!gen.prompt.trim()}
                 onClick={handleGenerate}
-                disabled={!gen.prompt.trim() || isGenerating}
               >
-                <Sparkles size={13} />
-                {isGenerating ? "Generating…" : "+ Generate"}
-              </button>
+                {isGenerating ? "Generating…" : `Generate · ${CREDIT_COSTS.PHOTO} credits`}
+              </LiquidButton>
             </CreditTooltip>
           </div>
         </div>
 
         {gen.error && (
-          <div style={{ margin: "0 18px 14px", display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(229,118,118,0.08)", borderRadius: 8, border: "1px solid rgba(229,118,118,0.20)" }}>
-            <AlertCircle size={13} color="var(--danger)" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: "var(--danger)" }}>{gen.error}</span>
-          </div>
+          <p role="alert" className="studio-error"><AlertCircle size={15} style={{ flex: "none" }} aria-hidden /> {gen.error}</p>
         )}
-      </div>
+      </section>
 
       {/* Gallery */}
       {aiCreatives.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        <div className="studio-gallery">
           {aiCreatives.map(c => <AiCreativeCard key={c.id} creative={c} uid={uid} projectId={project.id} />)}
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       <InsufficientCreditsModal
         open={creditModalOpen}
@@ -638,11 +527,7 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
   function handleDownload() {
     if (!creative.imageUrl) return;
     setMenuOpen(false);
-    const a    = document.createElement("a");
-    const fname = `creative-${creative.id}.jpg`;
-    a.href     = `/api/download?url=${encodeURIComponent(creative.imageUrl)}&filename=${encodeURIComponent(fname)}`;
-    a.download = fname;
-    a.click();
+    downloadViaProxy(creative.imageUrl, `creative-${creative.id}.jpg`).catch(() => { /* surfaced by browser no-op */ });
   }
 
   async function handleDelete() {
@@ -652,94 +537,85 @@ function AiCreativeCard({ creative, uid, projectId }: AiCreativeCardProps) {
     catch { setDeleting(false); }
   }
 
+  // Escape closes the lightbox.
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
+  // A generation whose image no longer loads is left out of the gallery.
+  if (imgError) return null;
+
   return (
     <>
-      <div
-        style={{
-          position: "relative", overflow: "hidden", borderRadius: 14,
-          aspectRatio: aspectCss,
-          background: "var(--bg-elevated)", border: "1px solid var(--border-default)",
-          cursor: hasImage ? "pointer" : "default",
-          opacity: deleting ? 0.45 : 1,
-          transition: "opacity 0.2s, transform 0.22s var(--ease)",
-        }}
-        onClick={() => hasImage && setLightbox(true)}
-        onMouseEnter={e => { if (hasImage) e.currentTarget.style.transform = "translateY(-3px)"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
-      >
+      <div className={`gen-tile lift${deleting ? " deleting" : ""}`} style={{ aspectRatio: aspectCss }}>
         {hasImage && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={creative.imageUrl} alt={creative.prompt}
+          <img src={creative.imageUrl} alt="" draggable={false}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
             onError={() => setImgError(true)}
           />
         )}
 
+        {hasImage && (
+          <button type="button" className="gen-open" aria-label={`Open image: ${title}`} onClick={() => setLightbox(true)} />
+        )}
+
         {isPending && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", lineHeight: 1.5 }}>Creative<br />generating…</span>
+          <div className="gen-state shimmer" role="status">
+            <Loader2 size={24} className="spinner" style={{ color: "var(--accent-primary)" }} aria-hidden />
+            <span>Creative<br />generating…</span>
           </div>
         )}
 
         {isFailed && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--danger)", textAlign: "center" }}>Generation<br />failed</span>
+          <div className="gen-state">
+            <AlertCircle size={22} style={{ color: "var(--danger)" }} aria-hidden />
+            <span style={{ color: "var(--danger)" }}>Generation<br />failed. Credits refunded.</span>
           </div>
         )}
 
-        {/* Aspect badge */}
-        <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, color: "#fff" }}>
-          {creative.aspectRatio}
-        </div>
+        <span className="gen-badge">{creative.aspectRatio}</span>
 
-        {/* 3-dots menu */}
-        <div style={{ position: "absolute", top: 6, right: 6 }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => setMenuOpen(o => !o)}
-            style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
-            <MoreVertical size={14} />
-          </button>
-          {menuOpen && (
-            <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
-              <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden", minWidth: 130, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}>
-                {hasImage && (
-                  <button onClick={handleDownload} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--text-primary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                    <Download size={13} color="var(--text-secondary)" /> Save
-                  </button>
-                )}
-                <button onClick={handleDelete} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", fontSize: 13, color: "var(--danger)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                  <Trash2 size={13} /> Delete
+        {/* Menu */}
+        <button type="button" className="gen-menu-btn" aria-label="Image options" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
+          <MoreVertical size={16} aria-hidden />
+        </button>
+        {menuOpen && (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
+            <div className="glass gen-menu" role="menu">
+              {hasImage && (
+                <button type="button" role="menuitem" className="menu-item" onClick={handleDownload}>
+                  <Download size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Save</span>
                 </button>
-              </div>
-            </>
-          )}
-        </div>
+              )}
+              <button type="button" role="menuitem" className="menu-item danger" onClick={handleDelete}>
+                <Trash2 size={14} aria-hidden /> <span style={{ flex: 1, textAlign: "left" }}>Delete</span>
+              </button>
+            </div>
+          </>
+        )}
 
-        {/* Bottom overlay */}
         {hasImage && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.82))", padding: "40px 12px 12px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {title}
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 4, fontWeight: 500 }}>
-              {creative.aspectRatio} · nano-banana-2 · {creative.createdAt}
-            </div>
+          <div className="gen-caption">
+            <div className="gen-caption-title" dir="auto">{title}</div>
+            <div className="gen-caption-meta">{creative.aspectRatio} · nano-banana-2 · {creative.createdAt}</div>
           </div>
         )}
       </div>
 
       {lightbox && hasImage && (
-        <div className="dialog-overlay" style={{ zIndex: 100 }} onClick={() => setLightbox(false)}>
-          <div style={{ position: "relative", maxWidth: "min(90vw, 900px)", maxHeight: "90vh", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }} onClick={e => e.stopPropagation()}>
+        <div className="dialog-overlay" style={{ zIndex: 100 }} role="dialog" aria-modal="true" aria-label={title} onClick={() => setLightbox(false)}>
+          <div style={{ position: "relative", maxWidth: "min(90vw, 900px)", maxHeight: "90vh", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }} onClick={e => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={creative.imageUrl} alt={creative.prompt} style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, objectFit: "contain", boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }} />
+            <img src={creative.imageUrl} alt={creative.prompt} style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: 24, objectFit: "contain", boxShadow: "var(--card-shadow)" }} />
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={handleDownload} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--accent-primary)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                <Download size={13} /> Download
-              </button>
-              <button onClick={() => setLightbox(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, background: "var(--bg-elevated)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer", fontFamily: "inherit" }}>
-                <X size={13} /> Close
+              <LiquidButton icon={<Download size={15} aria-hidden />} onClick={handleDownload}>Download</LiquidButton>
+              <button type="button" className="btn-secondary glass-inner" style={{ width: "auto", minHeight: 48, padding: "0 22px", display: "inline-flex", alignItems: "center", gap: 8 }} onClick={() => setLightbox(false)}>
+                <X size={15} aria-hidden /> Close
               </button>
             </div>
           </div>
